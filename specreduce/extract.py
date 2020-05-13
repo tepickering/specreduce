@@ -113,7 +113,7 @@ class BoxcarExtract(SpecreduceOperation):
             # based on aperture phot err description by F. Masci, Caltech:
             # http://wise2.ipac.caltech.edu/staff/fmasci/ApPhotUncert.pdf
             fluxerr[i] = np.sqrt(
-                np.nansum(onedspec[i] - skysubflux[i]) + (n_ap + n_ap**22 / n_bkg) * (sigma_bkg**2)
+                np.nansum(onedspec[i] - skysubflux[i]) + (n_ap + n_ap**2 / n_bkg) * (sigma_bkg**2)
             )
 
         spec = Spectrum1D(
