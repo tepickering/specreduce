@@ -5,6 +5,9 @@ Utilities for defining, loading, and handling spectroscopic calibration data
 import os
 import pkg_resources
 import warnings
+from dataclasses import dataclass
+
+import numpy as np
 
 import astropy.units as u
 from astropy.table import Table
@@ -18,8 +21,10 @@ __all__ = [
     'get_reference_file_path',
     'load_MAST_calspec',
     'load_onedstds',
-    'AtmosphericExtinction',
-    'AtmosphericTransmission'
+    'BaseAtmosphericExtinction',
+    'AtmosphericTransmission',
+    'ObservatoryExtinction',
+    'CustomAtmosphericExtinction'
 ]
 
 """
@@ -243,16 +248,72 @@ def load_onedstds(dataset="snfactory", specfile="EG131.dat", cache=True, show_pr
     return spectrum
 
 
-class AtmosphericExtinction(Spectrum1D):
+@dataclass
+class BaseAtmosphericExtinction:
     """
-    Spectrum container for atmospheric extinction in magnitudes as a function of wavelength.
-    If extinction and spectral_axis are provided, this will use them to build a custom model.
-    If they are not, the 'model' parameter will be used to lookup and load a pre-defined
-    atmospheric extinction model from the `specreduce_data` package.
+    Base atmospheric extinction class to set up common methods/properties
+
+    Attributes
+    ----------
+    wavelength : `~astropy.units.Quantity`
+        Wavelengths of the extinction curve
+
+    extinction_curve : `~astropy.units.Quantity`
+        Base extinction curve normalized to an airmass of 1.0 in units of magnitudes/airmass
+    """
+    def __post_init__(self):
+        """
+        Set up a default null extinction curve with the right units
+        """
+        self.wavelength = np.linspace(1000, 50000, 10) * u.angstrom
+        self.extinction_curve = u.Magnitude(
+            np.zeros_like(self.wavelength.data),
+            u.MagUnit(u.dimensionless_unscaled)
+        )
+
+    def extinction(self, airmass=1.0):
+        """
+        Return extinction in magnitudes at a given airmass
+        """
+        if airmass < 1.0:
+            msg = f"Airmass, {airmass}, must be >= 1.0."
+            raise ValueError(msg)
+        # multiplying by a scalar converts Magnitude to Quantity so work around that
+        ext = self._mult_airmass(airmass=airmass)
+        return ext
+
+    def transmission(self, airmass=1.0):
+        """
+        Return dimensionless transmission at a given airmass
+        """
+        if airmass < 1.0:
+            msg = f"Airmass, {airmass}, must be >= 1.0."
+            raise ValueError(msg)
+        ext = self._mult_airmass(airmass=airmass)
+        trans = ext.to(u.dimensionless_unscaled)
+        return trans
+
+    def _mult_airmass(self, airmass=1.0):
+        """
+        Workaround astropy.units "feature" where multiplying by a scalar strips
+        magnitudes of their physical units.
+        """
+        ext = u.Magnitude(
+            self.extinction_curve.value * airmass,
+            u.MagUnit(u.dimensionless_unscaled)
+        )
+        return ext
+
+
+@dataclass
+class ObservatoryExtinction(BaseAtmosphericExtinction):
+    """
+    Load atmospheric extinction models for observatory data provided by the `specreduce_data`
+    package.
 
     Parameters
     ----------
-    model : str
+    observatory : str
         Name of atmospheric extinction model provided by `specreduce_data`. Valid
         options are:
 
@@ -264,109 +325,51 @@ class AtmosphericExtinction(Spectrum1D):
         mtham - Lick Observatory, Mt. Hamilton station
         paranal - European Southern Observatory, Cerro Paranal station
 
-    extinction : `~astropy.units.LogUnit`, `~astropy.units.Magnitude`,
-    `~astropy.units.dimensionless_unscaled`, 1D list-like, or None
-        Optionally provided extinction data for this spectrum. Used along with spectral_axis
-        to build custom atmospheric extinction model. If no units are provided, assumed to
-        be given in magnitudes.
+    cache : bool (default = True)
+        Toggle caching of downloaded data.
 
-    spectral_axis : `~astropy.units.Quantity` or `~specutils.SpectralCoord` or None
-        Optional Dispersion information with the same shape as the last (or only)
-        dimension of flux, or one greater than the last dimension of flux
-        if specifying bin edges. Used along with flux to build custom atmospheric
-        extinction model.
-
-    Properties
-    ----------
-    extinction_mag : `~astropy.units.Magnitude`
-        Extinction expressed in dimensionless magnitudes
-
-    transmission : `~astropy.units.dimensionless_unscaled`
-        Extinction expressed as fractional transmission
-
+    show_progress : bool (default = False)
+        Toggle showing progress bar while downloading data.
     """
-    def __init__(self, model="kpno", extinction=None, spectral_axis=None,
-                 cache=True, show_progress=False, **kwargs):
-        if extinction is not None:
-            if not isinstance(extinction, u.Quantity):
-                warnings.warn(
-                    "Input extinction is not a Quanitity. Assuming it is given in magnitudes...",
-                    AstropyUserWarning
-                )
-                extinction = u.Magnitude(
-                    extinction,
-                    u.MagUnit(u.dimensionless_unscaled)
-                ).to(u.dimensionless_unscaled)  # Spectrum1D wants this to be linear
-            if isinstance(extinction, (u.LogUnit, u.Magnitude)) or extinction.unit == u.mag:
-                # if in log or magnitudes, recast into Magnitude with dimensionless physical units
-                extinction = u.Magnitude(
-                    extinction.value,
-                    u.MagUnit(u.dimensionless_unscaled)
-                ).to(u.dimensionless_unscaled)
-            if extinction.unit != u.dimensionless_unscaled:
-                # if we're given something linear that's not dimensionless_unscaled,
-                # it's an error
-                msg = "Input extinction must have unscaled dimensionless units."
-                raise ValueError(msg)
+    observatory: str = "kpno"
+    cache: bool = True
+    show_progress: bool = False
 
-        if extinction is None and spectral_axis is None:
-            if model not in SUPPORTED_EXTINCTION_MODELS:
-                msg = (
-                    f"Requested extinction model, {model}, not in list "
-                    f"of available models: {SUPPORTED_EXTINCTION_MODELS}"
-                )
-                raise ValueError(msg)
-            model_file = os.path.join("extinction", f"{model}extinct.dat")
-            model_path = get_reference_file_path(
-                path=model_file,
-                cache=cache,
-                show_progress=show_progress
+    def __post_init__(self):
+        if self.observatory not in SUPPORTED_EXTINCTION_MODELS:
+            msg = (
+                f"Requested observatory extinction model, {self.observatory}, not in list "
+                f"of available models: {SUPPORTED_EXTINCTION_MODELS}"
             )
-            t = Table.read(model_path, format="ascii", names=['wavelength', 'extinction'])
-
-            # the specreduce_data models all provide wavelengths in angstroms
-            spectral_axis = t['wavelength'].data * u.angstrom
-
-            # the specreduce_data models all provide extinction in magnitudes at an airmass of 1
-            extinction = u.Magnitude(
-                t['extinction'].data,
-                u.MagUnit(u.dimensionless_unscaled)
-            ).to(u.dimensionless_unscaled)
-
-        if spectral_axis is None:
-            msg = "Missing spectral axis for input extinction data."
             raise ValueError(msg)
+        model_file = os.path.join("extinction", f"{self.observatory}extinct.dat")
+        model_path = get_reference_file_path(
+            path=model_file,
+            cache=self.cache,
+            show_progress=self.show_progress
+        )
+        t = Table.read(model_path, format="ascii", names=['wavelength', 'extinction'])
 
-        super(AtmosphericExtinction, self).__init__(
-            flux=extinction,
-            spectral_axis=spectral_axis,
-            unit=u.dimensionless_unscaled,
-            **kwargs
+        # the specreduce_data models all provide wavelengths in angstroms
+        self.wavelength = t['wavelength'].data * u.angstrom
+
+        # the specreduce_data models all provide extinction in magnitudes at an airmass of 1
+        self.extinction_curve = u.Magnitude(
+            t['extinction'].data,
+            u.MagUnit(u.dimensionless_unscaled)
         )
 
-    @property
-    def extinction_mag(self):
-        """
-        This property returns the extinction in magnitudes
-        """
-        return self.flux.to(u.mag(u.dimensionless_unscaled))
 
-    @property
-    def transmission(self):
-        """
-        This property returns the transmission as a fraction between 0 and 1
-        """
-        return self.flux
-
-
-class AtmosphericTransmission(AtmosphericExtinction):
+@dataclass
+class AtmosphericTransmission(BaseAtmosphericExtinction):
     """
-    Spectrum container for atmospheric transmission as a function of wavelength.
+    Load atmospheric transmission vs wavelength from a data file, e.g. output of a
+    telluric model.
 
     Parameters
     ----------
-    data_file : str or `~pathlib.Path` or None
-        Name to file containing atmospheric transmission data. Data is assumed to have
+    data_path : str
+        Path to file containing atmospheric transmission data. Data is assumed to have
         two columns, wavelength and transmission (unscaled dimensionless). If
         this isn't provided, a model is built from a pre-calculated table of values
         from 0.9 to 5.6 microns. The values were generated by the ATRAN model,
@@ -377,21 +380,79 @@ class AtmosphericTransmission(AtmosphericExtinction):
     wave_unit : `~astropy.units.Unit` (default = u.um)
         Units for spectral axis.
     """
-    def __init__(self, data_file=None, wave_unit=u.um, **kwargs):
-        if data_file is None:
-            data_path = os.path.join("extinction", "atm_trans_am1.0.dat")
-            data_file = get_reference_file_path(path=data_path)
+    data_path: str = os.path.join("extinction", "atm_trans_am1.0.dat")
+    wave_unit: u.Quantity = u.um
 
-        t = Table.read(data_file, format="ascii", names=['wavelength', 'extinction'])
+    def __post_init__(self):
+        if not os.path.isfile(self.data_path):
+            orig_path = self.data_path
+            self.data_path = get_reference_file_path(path=self.data_path)
+
+        if not os.path.isfile(self.data_path):
+            msg = (
+                f"Can't load atmospheric transmission data file, {orig_path}, locally "
+                "or from specreduce_data."
+            )
+            raise ValueError(msg)
+
+        t = Table.read(self.data_path, format="ascii", names=['wavelength', 'extinction'])
 
         # spectral axis is given in microns
-        spectral_axis = t['wavelength'].data * wave_unit
+        self.wavelength = t['wavelength'].data * self.wave_unit
 
         # extinction is given in a dimensionless transmission fraction
-        extinction = t['extinction'].data * u.dimensionless_unscaled
+        transmission_curve = t['extinction'].data * u.dimensionless_unscaled
+        self.extinction_curve = transmission_curve.to(u.mag(u.dimensionless_unscaled))
 
-        super(AtmosphericTransmission, self).__init__(
-            extinction=extinction,
-            spectral_axis=spectral_axis,
-            **kwargs
-        )
+
+@dataclass
+class CustomAtmosphericExtinction(BaseAtmosphericExtinction):
+    """
+    Custom atmospheric extinction model using input Quantity arrays for wavelength
+    and extinction_curve.
+
+    Parameters
+    ----------
+    wavelength : u.Quantity
+        Input array of wavelengths for extinction curve (default: u.um if not provided)
+    extinction_curve : u.Quantity
+        Input extinction curve (default: magnitudes if not provided)
+    """
+    wavelength: u.Quantity
+    extinction_curve: u.Quantity
+
+    def __post_init__(self):
+        if not hasattr(self.wavelength, '__len__'):
+            msg = "Input wavelengths must be an array."
+            raise ValueError(msg)
+
+        if not hasattr(self.extinction_curve, '__len__'):
+            msg = "Input extinction curve must be an array."
+            raise ValueError(msg)
+
+        if len(self.wavelength) < 2 or len(self.extinction_curve) < 2:
+            msg = "Input extinction curve data must have a wavelength range, i.e. length >= 2."
+            raise ValueError(msg)
+
+        if not hasattr(self.wavelength, "unit"):
+            self.wavelength *= u.um
+
+        if not hasattr(self.extinction_curve, "unit"):
+            self.extinction_curve = u.Magnitude(
+                self.extinction_curve,
+                u.MagUnit(u.dimensionless_unscaled)
+            )
+
+        if self.extinction_curve.unit == u.dimensionless_unscaled:
+            # force self.extinction_curve into magnitudes
+            self.extinction_curve = self.extinction_curve.to(u.mag(u.dimensionless_unscaled))
+        elif self.extinction_curve.unit == u.mag:
+            # if raw magnitudes, convert to physical ones
+            if not hasattr(self.extinction_curve, "physical"):
+                self.extinction_curve = u.Magnitude(
+                    self.extinction_curve.value,
+                    u.MagUnit(u.dimensionless_unscaled)
+                )
+        else:
+            msg = f"Invalid units, {self.extinction_curve.unit}, for input extinction curve."
+            raise ValueError(msg)

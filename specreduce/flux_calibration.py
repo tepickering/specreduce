@@ -1,4 +1,6 @@
 import os
+from dataclasses import field
+from typing import Any
 
 import numpy as np
 
@@ -12,9 +14,28 @@ from scipy.interpolate import UnivariateSpline
 
 from specutils import Spectrum1D
 from specreduce.core import SpecreduceOperation
-
+from specreduce.calibration_data import BaseAtmosphericExtinction
 
 __all__ = ['FluxCalibration']
+
+
+class AtmosphericCorrection(SpecreduceOperation):
+    """
+    Applies corrections for wavelength-dependent atmospheric absorption.
+
+    Attributes
+    ----------
+    extinction_model : `~specreduce.calibration_data.BaseAtmosphericExtinction` or
+    sub-class thereof.
+        Model of wavelength-dependent atmospheric absorption. Defaults to a default
+        instance of BaseAtmosphericExtinction and is assumed to be normalized to an
+        airmass of 1.
+
+    airmass : float (default = 1.0)
+        Airmass of observed spectrum.
+    """
+    extinction_model: Any = field(default_factory=BaseAtmosphericExtinction)
+    airmass: float = 1.0
 
 
 class FluxCalibration(SpecreduceOperation):
@@ -24,14 +45,14 @@ class FluxCalibration(SpecreduceOperation):
     Parameters
     ----------
     object_spectrum : a Spectrum1D object
-            The observed object spectrum to apply the sensfunc to,
-            with the wavelength of the data points in Angstroms
-            as the ``spectral_axis``, and the magnitudes of the
-            data as the ``flux``.
+        The observed object spectrum to apply the sensfunc to,
+        with the wavelength of the data points in Angstroms
+        as the ``spectral_axis``, and the magnitudes of the
+        data as the ``flux``.
     airmass : float
-            The value of the airmass. Note: NOT the header keyword.
+        The value of the airmass. Note: NOT the header keyword.
     zeropoint : float, optional
-            Conversion factor for mag->flux. (Default is 48.60).
+        Conversion factor for mag->flux. (Default is 48.60).
 
     """
 
