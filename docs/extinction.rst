@@ -29,14 +29,16 @@ Supported Optical Extinction Models
 
 
 1. The CTIO extinction curve was originally distributed with IRAF and comes from the work of
-Stone & Baldwin (1983 MNRAS 204, 347) plus Baldwin & Stone (1984 MNRAS 206,
-241).  The first of these papers lists the points from 3200-8370A while
-the second extended the flux calibration from 6056 to 10870A but the
+`Stone & Baldwin (1983 MNRAS 204, 347) <https://ui.adsabs.harvard.edu/abs/1983MNRAS.204..347S/abstract>`_
+plus `Baldwin & Stone (1984 MNRAS 206, 241) <https://ui.adsabs.harvard.edu/abs/1984MNRAS.206..241B/abstract>`_.
+The first of these papers lists the points from 3200-8370 Å while
+the second extended the flux calibration from 6056 to 10870 Å but the
 derived extinction curve was not given in the paper.  The IRAF table
-follows SB83 out to 6436, the redder points presumably come from BS84
+follows SB83 out to 6436 Å, the redder points presumably come from BS84
 with averages used in the overlap region. More recent CTIO extinction
-curves are shown as Figures in Hamuy et al (92, PASP 104, 533 ; 94 PASP
-106, 566).
+curves are shown as Figures in Hamuy et al.
+(`1992, PASP 104, 533 <https://ui.adsabs.harvard.edu/abs/1992PASP..104..533H/abstract>`_ ;
+`1994, PASP 106, 566 <https://ui.adsabs.harvard.edu/abs/1994PASP..106..566H/abstract>`_).
 
 2. The KPNO extinction table was originally distributed with IRAF. The ultimate provenance of this data is unclear,
 but it has been used as-is in this form for over 30 years.
@@ -57,8 +59,8 @@ https://www.aanda.org/articles/aa/pdf/2011/03/aa15537-10.pdf.
 available at https://www.apo.nmsu.edu/arc35m/Instruments/DIS/ (https://www.apo.nmsu.edu/arc35m/Instruments/DIS/images/apoextinct.dat).
 
 In each case, the extinction is given in magnitudes per airmass and the wavelengths are in Angstroms. Here is an example that
-uses the `~specreduce.calibration_data.ObservatoryExtinction` class to load each model and plots the extinction in magnitudes as well as fractional transmission
-as a function of wavelength:
+uses the `~specreduce.calibration_data.ObservatoryExtinction` class to load each supported model and plots the extinction in
+magnitudes as well as fractional transmission as a function of wavelength:
 
 .. plot::
     :include-source:
@@ -96,5 +98,46 @@ https://mwvgroup.github.io/pwv_kpno/1.0.0/documentation/html/index.html and http
     ax.plot(ext_custom.wavelength, ext_custom.transmission(), label=r"sec $z$ = 1.5; 1.6 mm H$_{2}$O", linewidth=1)
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=2, fancybox=True, shadow=True)
     ax.set_xlabel("Wavelength (microns)")
+    ax.set_ylabel("Transmission")
+    fig.show()
+
+`~specreduce.calibration_data.CustomAtmosphericExtinction` is provided to facilitate constructing atmospheric extinction models
+from user provided arrays of for wavelength and extinction versus wavelength. It will honor any provided wavelength units and assume
+wavelengths are given in microns if they are not provided. Likewise, the provided extinction curve is assumed to be in magnitudes per airmass
+if no units are provided. Otherwise, the supported units are `~astropy.units.function.logarithmic.Magnitude` or, if it's linear,
+`dimensionless_unscaled <https://docs.astropy.org/en/stable/units/standard_units.html#doc-dimensionless-unit>`_.
+
+.. plot::
+    :include-source:
+
+    import numpy as np
+
+    import astropy.units as u
+
+    import matplotlib.pyplot as plt
+    from specreduce.calibration_data import CustomAtmosphericExtinction
+
+    wave_min, wave_max = 0.3, 2.0
+    wave = np.linspace(wave_min, wave_max, 50)
+
+    # These are the exact same extinction curve expressed as magnitudes
+    # and then linear transmission
+    extinction_mag = np.sqrt(wave_max / wave) * u.mag
+    extinction_linear = 10**(-0.4*np.sqrt(wave_max / wave)) * u.dimensionless_unscaled
+
+    # Apply some constant offsets in magnitudes
+    extinction_01mag = extinction_mag + 0.1 * u.mag
+    extinction_02mag = extinction_mag + 0.2 * u.mag
+
+    ext_lin = CustomAtmosphericExtinction(wavelength=wave, extinction_curve=extinction_linear)
+    ext_01 = CustomAtmosphericExtinction(wavelength=wave, extinction_curve=extinction_01mag)
+    ext_02 = CustomAtmosphericExtinction(wavelength=wave, extinction_curve=extinction_02mag)
+
+    fig, ax = plt.subplots()
+    ax.plot(ext_lin.wavelength, ext_lin.transmission(), label="Linear input")
+    ax.plot(ext_01.wavelength, ext_01.transmission(), label="+0.1 mag")
+    ax.plot(ext_02.wavelength, ext_02.transmission(), label="+0.2 mag")
+    ax.legend()
+    ax.set_xlabel(f"Wavelength ({ext_lin.wavelength.unit})")
     ax.set_ylabel("Transmission")
     fig.show()

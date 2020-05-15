@@ -343,8 +343,7 @@ class BaseAtmosphericExtinction:
 @dataclass
 class ObservatoryExtinction(BaseAtmosphericExtinction):
     """
-    Load atmospheric extinction models for observatory data provided by the `specreduce_data`
-    package.
+    Load atmospheric extinction models for specific observatories that are provided by the `specreduce_data` package.
 
     Parameters
     ----------
@@ -455,15 +454,15 @@ class AtmosphericTransmission(BaseAtmosphericExtinction):
 @dataclass
 class CustomAtmosphericExtinction(BaseAtmosphericExtinction):
     """
-    Custom atmospheric extinction model using input Quantity arrays for wavelength
+    Custom atmospheric extinction model using input arrays for wavelength
     and extinction_curve.
 
-    Constructor Arguments
-    ---------------------
-    wavelength : `~astropy.units.Quantity`
+    Parameters
+    ----------
+    wavelength : list-like or `~astropy.units.Quantity`
         Input array of wavelengths for extinction curve (default: u.um if not provided)
 
-    extinction_curve : `~astropy.units.Quantity`
+    extinction_curve : list-like or `~astropy.units.Quantity`
         Input extinction curve (default: magnitudes if not provided)
     """
     wavelength: u.Quantity
