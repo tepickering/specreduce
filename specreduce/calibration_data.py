@@ -51,6 +51,9 @@ SUPPORTED_EXTINCTION_MODELS = [
     "mtham",
     "paranal"
 ]
+"""
+List of available extinction curves for individual observatories
+"""
 
 SPECPHOT_DATASETS = [
     "bstdscal",
@@ -67,18 +70,21 @@ SPECPHOT_DATASETS = [
     "spec50cal",
     "spechayescal"
 ]
+"""
+List of spectrophotometric standard star datasets
+"""
 
 
 def get_reference_file_path(path=None, cache=False, show_progress=False):
     """
-    Basic function to take a path to a file and load it via pkg_resources if the specreduce_data
+    Basic function to take a path to a file and load it via pkg_resources if the `specreduce_data`
     package is available and load it via ghithub raw user content if not.
 
     Parameters
     ----------
     path : str or None (default: None)
         Filename of reference file relative to the reference_data directory within
-        specreduce_data package.
+        `specreduce_data` package.
 
     cache : bool (default: False)
         Set whether file is cached if file is downloaded.
@@ -144,8 +150,7 @@ def load_MAST_calspec(filename, remote=True, cache=True, show_progress=False):
         FITS filename of the standard star spectrum, e.g. g191b2b_005.fits.
 
     remote : bool (default = True)
-        If True, download the spectrum from MAST. If False, check if `filename` exists and load
-        it.
+        If True, download the spectrum from MAST. If False, check if `filename` exists and load it.
     cache : bool (default = True)
         Toggle whether downloaded data is cached or not.
     show_progress : bool (default = True)
@@ -195,7 +200,7 @@ def load_MAST_calspec(filename, remote=True, cache=True, show_progress=False):
 def load_onedstds(dataset="snfactory", specfile="EG131.dat", cache=True, show_progress=False):
     """
     This is a convenience function for loading a standard star spectrum from the 'onedstds'
-    dataset in the `~specreduce_data` package. If that package is installed, `~pkg_resources`
+    dataset in the `specreduce_data` package. If that package is installed, `~pkg_resources`
     will be used to locate the data files locally. Otherwise they will be downloaded from the
     repository on github.
 
@@ -274,6 +279,16 @@ class BaseAtmosphericExtinction:
     def extinction(self, airmass=1.0):
         """
         Return extinction in magnitudes at a given airmass
+
+        Parameters
+        ----------
+        airmass : float (default = 1.0)
+            Airmass to scale extinction curve to.
+
+        Returns
+        -------
+        ext : `~astropy.units.Quantity`
+            Airmass-scaled extinction curve in magnitudes.
         """
         if airmass < 1.0:
             msg = f"Airmass, {airmass}, must be >= 1.0."
@@ -285,6 +300,16 @@ class BaseAtmosphericExtinction:
     def transmission(self, airmass=1.0):
         """
         Return dimensionless transmission at a given airmass
+
+        Parameters
+        ----------
+        airmass : float (default = 1.0)
+            Airmass to scale extinction curve to.
+
+        Returns
+        -------
+        ext : `~astropy.units.Quantity`
+            Airmass-scaled transmission curve.
         """
         if airmass < 1.0:
             msg = f"Airmass, {airmass}, must be >= 1.0."
@@ -297,6 +322,16 @@ class BaseAtmosphericExtinction:
         """
         Workaround astropy.units "feature" where multiplying by a scalar strips
         magnitudes of their physical units.
+
+        Parameters
+        ----------
+        airmass : float (default = 1.0)
+            Airmass to scale extinction curve to.
+
+        Returns
+        -------
+        ext : `~astropy.units.Quantity`
+            Airmass-scaled extinction curve in magnitudes.
         """
         ext = u.Magnitude(
             self.extinction_curve.value * airmass,
@@ -379,14 +414,26 @@ class AtmosphericTransmission(BaseAtmosphericExtinction):
 
     wave_unit : `~astropy.units.Unit` (default = u.um)
         Units for spectral axis.
+
+    cache : bool (default = True)
+        Toggle caching of downloaded data.
+
+    show_progress : bool (default = False)
+        Toggle showing progress bar while downloading data.
     """
     data_path: str = os.path.join("extinction", "atm_trans_am1.0.dat")
     wave_unit: u.Quantity = u.um
+    cache: bool = True
+    show_progress: bool = False
 
     def __post_init__(self):
         if not os.path.isfile(self.data_path):
             orig_path = self.data_path
-            self.data_path = get_reference_file_path(path=self.data_path)
+            self.data_path = get_reference_file_path(
+                path=self.data_path,
+                cache=self.cache,
+                show_progress=self.show_progress
+            )
 
         if not os.path.isfile(self.data_path):
             msg = (
@@ -411,11 +458,12 @@ class CustomAtmosphericExtinction(BaseAtmosphericExtinction):
     Custom atmospheric extinction model using input Quantity arrays for wavelength
     and extinction_curve.
 
-    Parameters
-    ----------
-    wavelength : u.Quantity
+    Constructor Arguments
+    ---------------------
+    wavelength : `~astropy.units.Quantity`
         Input array of wavelengths for extinction curve (default: u.um if not provided)
-    extinction_curve : u.Quantity
+
+    extinction_curve : `~astropy.units.Quantity`
         Input extinction curve (default: magnitudes if not provided)
     """
     wavelength: u.Quantity

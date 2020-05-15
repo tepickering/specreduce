@@ -1,3 +1,5 @@
+.. _extinction:
+
 Atmospheric Extinction
 ======================
 
@@ -27,7 +29,7 @@ Supported Optical Extinction Models
 
 
 1. The CTIO extinction curve was originally distributed with IRAF and comes from the work of
-Stone & Baldwin (1983 MN 204, 347) plus Baldwin & Stone (1984 MN 206,
+Stone & Baldwin (1983 MNRAS 204, 347) plus Baldwin & Stone (1984 MNRAS 206,
 241).  The first of these papers lists the points from 3200-8370A while
 the second extended the flux calibration from 6056 to 10870A but the
 derived extinction curve was not given in the paper.  The IRAF table
@@ -55,7 +57,7 @@ https://www.aanda.org/articles/aa/pdf/2011/03/aa15537-10.pdf.
 available at https://www.apo.nmsu.edu/arc35m/Instruments/DIS/ (https://www.apo.nmsu.edu/arc35m/Instruments/DIS/images/apoextinct.dat).
 
 In each case, the extinction is given in magnitudes per airmass and the wavelengths are in Angstroms. Here is an example that
-uses the `ObservatoryExtinction` class to load each model and plots the extinction in magnitudes as well as fractional transmission
+uses the `~specreduce.calibration_data.ObservatoryExtinction` class to load each model and plots the extinction in magnitudes as well as fractional transmission
 as a function of wavelength:
 
 .. plot::
@@ -67,7 +69,7 @@ as a function of wavelength:
     fig, ax = plt.subplots(2, 1, sharex=True)
     for observatory in SUPPORTED_EXTINCTION_MODELS:
         ext = ObservatoryExtinction(observatory=observatory)
-        ax[0].plot(ext.wavelength, ext.extinction(), label=model)
+        ax[0].plot(ext.wavelength, ext.extinction(), label=observatory)
         ax[1].plot(ext.wavelength, ext.transmission())
     ax[0].legend(fancybox=True, shadow=True)
     ax[1].set_xlabel("Wavelength ($\AA$)")
@@ -76,7 +78,7 @@ as a function of wavelength:
     plt.tight_layout()
     fig.show()
 
-A convenience class, `AtmosphericTransmission`, is provided for loading data files containing atmospheric transmission versus wavelength.
+A convenience class, `~specreduce.calibration_data.AtmosphericTransmission`, is provided for loading data files containing atmospheric transmission versus wavelength.
 The common use case for this would be loading the output of telluric models. By default it loads a telluric model for an airmass of 1 and
 1 mm of precipitable water. Some resources for generating more realistic model atmospheric transmission spectra include
 https://mwvgroup.github.io/pwv_kpno/1.0.0/documentation/html/index.html and http://www.eso.org/sci/software/pipelines/skytools/molecfit.
