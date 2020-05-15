@@ -343,7 +343,8 @@ class BaseAtmosphericExtinction:
 @dataclass
 class ObservatoryExtinction(BaseAtmosphericExtinction):
     """
-    Load atmospheric extinction models for specific observatories that are provided by the `specreduce_data` package.
+    Load atmospheric extinction models for specific observatories that are
+    provided by the `specreduce_data` package.
 
     Parameters
     ----------
