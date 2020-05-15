@@ -51,6 +51,9 @@ Reference/API
 .. automodapi:: specreduce.extract
     :no-inheritance-diagram:
 
+.. automodapi:: specreduce.calibration_data
+    :include-all-objects:
+    :no-inheritance-diagram:
 
 *****
 Index
