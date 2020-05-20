@@ -2,6 +2,8 @@ import numpy as np
 
 import astropy.units as u
 
+from specutils import Spectrum1D
+
 from ..calibration_data import (
     BaseAtmosphericExtinction,
     ObservatoryExtinction,
@@ -91,3 +93,12 @@ def test_transmission_model():
     ext = AtmosphericTransmission()
     assert(len(ext.extinction()) > 0)
     assert(len(ext.transmission()) > 0)
+
+
+def test_call_method():
+    wave = np.linspace(4000, 8000, 100) * u.angstrom
+    flux = np.ones_like(wave) * u.mJy
+    spec = Spectrum1D(flux=flux, spectral_axis=wave)
+    atmos_corr = ObservatoryExtinction(observatory="kpno")
+    s_corr = atmos_corr(spec, airmass=2.0)
+    assert(np.alltrue(s_corr.flux > spec.flux))

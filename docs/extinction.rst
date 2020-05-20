@@ -74,7 +74,7 @@ magnitudes as well as fractional transmission as a function of wavelength:
         ax[0].plot(ext.wavelength, ext.extinction(), label=observatory)
         ax[1].plot(ext.wavelength, ext.transmission())
     ax[0].legend(fancybox=True, shadow=True)
-    ax[1].set_xlabel("Wavelength ($\AA$)")
+    ax[1].set_xlabel(f"Wavelength ({ext.wavelength.unit})")
     ax[0].set_ylabel("Extinction (mag)")
     ax[1].set_ylabel("Transmission")
     plt.tight_layout()
@@ -137,7 +137,38 @@ if no units are provided. Otherwise, the supported units are `~astropy.units.fun
     ax.plot(ext_lin.wavelength, ext_lin.transmission(), label="Linear input")
     ax.plot(ext_01.wavelength, ext_01.transmission(), label="+0.1 mag")
     ax.plot(ext_02.wavelength, ext_02.transmission(), label="+0.2 mag")
-    ax.legend()
+    ax.legend(fancybox=True, shadow=True)
     ax.set_xlabel(f"Wavelength ({ext_lin.wavelength.unit})")
     ax.set_ylabel("Transmission")
+    fig.show()
+
+These classes are sub-classed from `~specreduce.calibration_data.BaseAtmosphericExtinction` and instances of them are callable to
+apply an extinction correction an input spectrum. Here is an example:
+
+.. plot::
+    :include-source:
+
+    import numpy as np
+
+    import astropy.units as u
+
+    import matplotlib.pyplot as plt
+
+    from specutils import Spectrum1D
+    from specreduce.calibration_data import ObservatoryExtinction
+
+    wave = np.linspace(4000, 8000, 100) * u.angstrom
+    flux = np.ones_like(wave.value) * u.mJy
+    spec = Spectrum1D(flux=flux, spectral_axis=wave)
+    atmos_corr = ObservatoryExtinction(observatory="mko")
+    airmass = 1.5
+    spec_corr = atmos_corr(spec, airmass=airmass)
+
+    fig, ax = plt.subplots()
+    ax.plot(spec.spectral_axis, spec.flux, label="Input")
+    ax.plot(spec_corr.spectral_axis, spec_corr.flux, label="Corrected")
+    ax.legend(fancybox=True, shadow=True)
+    ax.set_xlabel(f"Wavelength ({spec.spectral_axis.unit})")
+    ax.set_ylabel(f"Flux ({spec.flux.unit})")
+    ax.set_title(f"Apply Mauna Kea Observatory extinction model at airmass={airmass}")
     fig.show()

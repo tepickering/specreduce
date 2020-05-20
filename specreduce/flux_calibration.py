@@ -1,6 +1,5 @@
 import os
-from dataclasses import field
-from typing import Any
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -14,30 +13,11 @@ from scipy.interpolate import UnivariateSpline
 
 from specutils import Spectrum1D
 from specreduce.core import SpecreduceOperation
-from specreduce.calibration_data import BaseAtmosphericExtinction
 
 __all__ = ['FluxCalibration']
 
 
-class AtmosphericCorrection(SpecreduceOperation):
-    """
-    Applies corrections for wavelength-dependent atmospheric absorption.
-
-    Attributes
-    ----------
-    extinction_model : `~specreduce.calibration_data.BaseAtmosphericExtinction` or
-    sub-class thereof.
-        Model of wavelength-dependent atmospheric absorption. Defaults to a default
-        instance of BaseAtmosphericExtinction and is assumed to be normalized to an
-        airmass of 1.
-
-    airmass : float (default = 1.0)
-        Airmass of observed spectrum.
-    """
-    extinction_model: Any = field(default_factory=BaseAtmosphericExtinction)
-    airmass: float = 1.0
-
-
+@dataclass
 class FluxCalibration(SpecreduceOperation):
     """
     Carries out routine flux calibration operations.

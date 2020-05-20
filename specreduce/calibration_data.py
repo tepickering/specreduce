@@ -16,6 +16,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 import synphot
 from specutils import Spectrum1D
+from specutils.manipulation import FluxConservingResampler, SplineInterpolatedResampler
 
 __all__ = [
     'get_reference_file_path',
@@ -265,6 +266,24 @@ class BaseAtmosphericExtinction:
 
     extinction_curve : `~astropy.units.Quantity`
         Base extinction curve normalized to an airmass of 1.0 in units of magnitudes/airmass
+
+    Parameters
+    ----------
+    object_spectrum : `specutils.Spectrum1D` or spectrum-like
+        Input spectrum to correct for atmospheric transmission.
+    airmass : float (default = 1.0)
+        Airmass that `object_spectrum` was observed at.
+    resampler : instance of a `~specutils.manipulation.ResamplerBase` subclass or None
+        (Optional) Pass in a custom spectral resampler. If None, then the spectral axis samplings
+        of the extinction curve and input spectrum are used to decide which resampler to use.
+        `~specutils.manipulation.SplineInterpolatedResampler` is used if the extinction curve is
+        more coarsely sampled and `~specutils.manipulation.FluxConservingResampler` is used if
+        it's not.
+
+    Returns
+    -------
+    corrected_spectrum : `specutils.Spectrum1D` or spectrum-like
+        Spectrum object with flux corrected for atmospheric transmission.
     """
     def __post_init__(self):
         """
@@ -275,6 +294,34 @@ class BaseAtmosphericExtinction:
             np.zeros_like(self.wavelength.data),
             u.MagUnit(u.dimensionless_unscaled)
         )
+
+    def __call__(self, object_spectrum, airmass=1.0, resampler=None):
+        """
+        Make instance callable to apply extinction model to an input spectrum
+        """
+        if resampler is None:
+            """
+            If the wavelength sampling of the extinction curve is coarser than the input
+            spectrum's, we want to use `~specutils.manipulation.SplineInterpolatedResampler`
+            to estimate intermediate values. However, if the extinction curve is more finely
+            sampled than the input (e.g. high resolution spectra of telluric features), we want
+            to use `~specutils.manipulation.FluxConservingResampler` so that the absorption is
+            properly integrated within each input wavelength bin.
+            """
+            object_spacing = np.diff(object_spectrum.spectral_axis).max()
+            extinction_spacing = np.diff(self.wavelength).min()
+            if extinction_spacing > object_spacing:
+                resampler = SplineInterpolatedResampler()
+            else:
+                resampler = FluxConservingResampler(extrapolation_treatment='nan_fill')
+
+        transmission = self.transmission(airmass=airmass)
+        # specutils resamplers want the same wavelength units for both spectra
+        wave = self.wavelength.to(object_spectrum.spectral_axis_unit)
+        trans_spec = Spectrum1D(flux=transmission, spectral_axis=wave)
+        resampled_transmission = resampler(trans_spec, object_spectrum.spectral_axis)
+        corrected_spectrum = object_spectrum / resampled_transmission
+        return corrected_spectrum
 
     def extinction(self, airmass=1.0):
         """
