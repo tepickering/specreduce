@@ -9,6 +9,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+import matplotlib.pyplot as plt
+
 import astropy.units as u
 from astropy.table import Table
 from astropy.utils.data import download_file
@@ -364,6 +366,20 @@ class BaseAtmosphericExtinction:
         ext = self._mult_airmass(airmass=airmass)
         trans = ext.to(u.dimensionless_unscaled)
         return trans
+
+    @property
+    def check_plot(self):
+        """
+        Create basic check plot to show extinction and transmission curves at airmass=1.0
+        """
+        fig, ax = plt.subplots(2, 1, sharex=True)
+        ax[0].plot(self.wavelength, self.extinction())
+        ax[1].plot(self.wavelength, self.transmission())
+        ax[1].set_xlabel(f"Wavelength ({self.wavelength.unit})")
+        ax[0].set_ylabel("Extinction (mag)")
+        ax[1].set_ylabel("Transmission")
+        plt.tight_layout()
+        return fig
 
     def _mult_airmass(self, airmass=1.0):
         """

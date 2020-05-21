@@ -1,5 +1,7 @@
 import numpy as np
 
+from matplotlib.testing.decorators import cleanup
+
 import astropy.units as u
 
 from specutils import Spectrum1D
@@ -113,3 +115,10 @@ def test_fluxresample():
     atmos_corr = AtmosphericTransmission()
     s_corr = atmos_corr(spec)
     assert(np.alltrue(s_corr.flux >= spec.flux))
+
+
+@cleanup
+def test_checkplot():
+    ext = ObservatoryExtinction()
+    fig = ext.check_plot
+    assert(fig is not None)
