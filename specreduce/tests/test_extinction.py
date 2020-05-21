@@ -102,3 +102,14 @@ def test_call_method():
     atmos_corr = ObservatoryExtinction(observatory="kpno")
     s_corr = atmos_corr(spec, airmass=2.0)
     assert(np.alltrue(s_corr.flux > spec.flux))
+
+
+def test_fluxresample():
+    wave = np.linspace(10000, 20000, 200) * u.angstrom
+    flux = np.ones_like(wave) * u.mJy
+    spec = Spectrum1D(flux=flux, spectral_axis=wave)
+    # this is a finely sampled telluric spectrum that should trigger
+    # the flux conserving resampler to be used.
+    atmos_corr = AtmosphericTransmission()
+    s_corr = atmos_corr(spec)
+    assert(np.alltrue(s_corr.flux >= spec.flux))

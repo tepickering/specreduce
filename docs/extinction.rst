@@ -143,7 +143,15 @@ if no units are provided. Otherwise, the supported units are `~astropy.units.fun
     fig.show()
 
 These classes are sub-classed from `~specreduce.calibration_data.BaseAtmosphericExtinction` and instances of them are callable to
-apply an extinction correction an input spectrum. Here is an example:
+apply an extinction correction an input spectrum. Because extinction curves and input spectra will almost always have different
+spectral sampling, the extinction curve needs to be resampled to match the input spectrum. By default, the sampling method is
+chosen based on the relative sampling. If the extinction curve is more coarsely sampled than the input spectrum, resampling is
+done via cubic spline interpolation via `~specutils.manipulation.SplineInterpolatedResampler`. If it is more finely sampled
+(e.g. in the case of a high resolution telluric absorption model), then a flux-conserving resampling is done via
+`~specutils.manipulation.FluxConservingResampler` to make sure the absorption is properly averaged over each input spectral axis bin.
+This behavior can be overriden by specifying a `resampler` when applying a correction.
+
+Here is an example showing why you want to use spline interpolation on sparsely sampled extinction curves:
 
 .. plot::
     :include-source:
@@ -155,20 +163,61 @@ apply an extinction correction an input spectrum. Here is an example:
     import matplotlib.pyplot as plt
 
     from specutils import Spectrum1D
+    from specutils.manipulation import FluxConservingResampler
     from specreduce.calibration_data import ObservatoryExtinction
 
-    wave = np.linspace(4000, 8000, 100) * u.angstrom
+    wave = np.linspace(4000, 8000, 1000) * u.angstrom
     flux = np.ones_like(wave.value) * u.mJy
     spec = Spectrum1D(flux=flux, spectral_axis=wave)
     atmos_corr = ObservatoryExtinction(observatory="mko")
+
     airmass = 1.5
     spec_corr = atmos_corr(spec, airmass=airmass)
+    spec_fluxresample = atmos_corr(spec, airmass=airmass, resampler=FluxConservingResampler())
 
     fig, ax = plt.subplots()
     ax.plot(spec.spectral_axis, spec.flux, label="Input")
-    ax.plot(spec_corr.spectral_axis, spec_corr.flux, label="Corrected")
+    ax.plot(spec_corr.spectral_axis, spec_corr.flux, label="Spline Interpolated")
+    ax.plot(spec_fluxresample.spectral_axis, spec_fluxresample.flux, label="Flux Resampled")
     ax.legend(fancybox=True, shadow=True)
     ax.set_xlabel(f"Wavelength ({spec.spectral_axis.unit})")
     ax.set_ylabel(f"Flux ({spec.flux.unit})")
     ax.set_title(f"Apply Mauna Kea Observatory extinction model at airmass={airmass}")
+    fig.show()
+
+And here is an example showing the difference between spline interpolation and flux-conserved resampling when applying
+corrections from a high resolution telluric model.
+
+.. plot::
+    :include-source:
+
+    import numpy as np
+
+    import astropy.units as u
+
+    import matplotlib.pyplot as plt
+
+    from specutils import Spectrum1D
+    from specutils.manipulation import SplineInterpolatedResampler
+    from specreduce.calibration_data import AtmosphericTransmission
+
+    wave = np.linspace(13000, 15000, 50) * u.angstrom
+    flux = np.ones_like(wave.value) * u.mJy
+    spec = Spectrum1D(flux=flux, spectral_axis=wave)
+    atmos_corr = AtmosphericTransmission()
+
+    spec_corr = atmos_corr(spec)
+    spec_splineresample = atmos_corr(spec, resampler=SplineInterpolatedResampler())
+
+    fig, ax = plt.subplots(2, 1, sharex=True)
+    ax[0].plot(atmos_corr.wavelength.to(u.angstrom), atmos_corr.transmission())
+    ax[0].set_xlim(13000, 15000)
+    ax[1].plot(spec.spectral_axis, spec.flux, label="Input")
+    ax[1].plot(spec_corr.spectral_axis, spec_corr.flux, label="Flux Resampled")
+    ax[1].plot(spec_splineresample.spectral_axis, spec_splineresample.flux, label="Spline Interpolated")
+    ax[1].legend(fancybox=True, shadow=True)
+    ax[1].set_xlabel(f"Wavelength ({spec.spectral_axis.unit})")
+    ax[1].set_ylabel(f"Flux ({spec.flux.unit})")
+    ax[0].set_ylabel("Transmission")
+    ax[0].set_title(f"Apply high resolution telluric model")
     fig.show()
