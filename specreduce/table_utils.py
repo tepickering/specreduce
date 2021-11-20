@@ -1,4 +1,7 @@
-"""Utility functions to parse main NIST table.
+# Licensed under a 3-clause BSD style license - see ../licenses/LICENSE.rst
+
+"""
+Utility functions to parse main NIST table.
 """
 
 from astropy.table import Table, vstack
@@ -6,7 +9,8 @@ import numpy as np
 
 
 def sort_table_by_element(table, elem_list):
-    """Build table based on list of elements
+    """
+    Build table based on list of elements
 
     Parameters
     ----------
@@ -28,7 +32,8 @@ def sort_table_by_element(table, elem_list):
 
 
 def sort_table_by_wavelength(table, min_wave, max_wave):
-    """Build table off of wavelength ranges
+    """
+    Build table off of wavelength ranges
 
     Parameters
     ----------
@@ -54,7 +59,8 @@ def sort_table_by_wavelength(table, min_wave, max_wave):
 
 
 def main():
-    """A little example.
+    """
+    A little example.
     """
     t = Table.read('data/line_lists/NIST/NIST_combined.csv', format='csv')
     elements = ['He I', 'Ne I', 'Ar I']
