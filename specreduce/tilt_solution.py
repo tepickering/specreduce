@@ -1,7 +1,7 @@
 __all__ = ["TiltSolution"]
 
 from functools import cached_property
-from typing import Sequence
+from typing import Sequence, Literal
 
 import numpy as np
 from astropy.modeling import models
@@ -48,7 +48,7 @@ class TiltSolution:
 
     @property
     def cor2det(self):
-        """Tilt-corrected space to detector space transform."""
+        """Tilt-corrected space to detector space transform in x-axis: (x, y) -> x."""
         return self._r2d
 
     @cor2det.setter
@@ -68,7 +68,7 @@ class TiltSolution:
         self._r2d_dxdx = self._shift | diff_poly2d_x(self._r2d[-1])
 
     def rec_to_det(self, disp: ndarray, cdisp: ndarray) -> tuple[ndarray, ndarray]:
-        """Transform coordinates from the tilt-corrected space to detector space.
+        """Transform coordinates from the 2D tilt-corrected space to 2D detector space.
 
         Parameters
         ----------
@@ -91,6 +91,15 @@ class TiltSolution:
         nbins: int | None = None,
         bounds: tuple[float, float] | None = None,
         bin_edges: None | Sequence[float] = None,
+        mask_treatment: Literal[
+            "apply",
+            "ignore",
+            "propagate",
+            "zero_fill",
+            "nan_fill",
+            "apply_mask_only",
+            "apply_nan_only",
+        ] = "apply",
     ):
         """Resample a 2D spectrum from the detector space to a tilt-corrected space.
 
@@ -114,6 +123,22 @@ class TiltSolution:
             Explicitly provided edges of the bins in the tilt-corrected space. If None, bin
             edges are automatically calculated as a uniform grid based on ``nbins`` and
             ``bounds``.
+        mask_treatment
+             Specifies how to handle masked or non-finite values in the input image.
+             The accepted values are:
+
+             - ``apply``: The image remains unchanged, and any existing mask is combined with a mask
+             derived from non-finite values.
+             - ``ignore``: The image remains unchanged, and any existing mask is dropped.
+             - ``propagate``: The image remains unchanged, and any masked or non-finite pixel
+             causes the mask to extend across the entire cross-dispersion axis.
+             - ``zero_fill``: Pixels that are either masked or non-finite are replaced with 0.0,
+             and the mask is dropped.
+             - ``nan_fill``:  Pixels that are either masked or non-finite are replaced with nan,
+             and the mask is dropped.
+             - ``apply_mask_only``: The  image and mask are left unmodified.
+             - ``apply_nan_only``: The  image is left unmodified, the old mask is dropped,
+             and a new mask is created based on non-finite values.
 
         Returns
         -------
@@ -125,7 +150,7 @@ class TiltSolution:
         # TODO: In the future, we want to make sure that we don't copy the data unless absolutely
         # necessary.
         ip = _ImageParser()
-        im = ip._parse_image(flux, disp_axis=self.disp_axis, mask_treatment=self.mask_treatment)
+        im = ip._parse_image(flux, disp_axis=self.disp_axis, mask_treatment=mask_treatment)
         flux = im.flux.value
 
         ny, nx = flux.data.shape

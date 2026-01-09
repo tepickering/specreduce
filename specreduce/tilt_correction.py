@@ -65,7 +65,7 @@ class TiltCorrection:
              A reference pixel position along the dispersion axis. Should be close to the
              center of the frame along the dispersion axis for best results.
 
-         mask_treatment
+        mask_treatment
              Specifies how to handle masked or non-finite values in the input image.
              The accepted values are:
 
