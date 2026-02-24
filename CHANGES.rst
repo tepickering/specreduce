@@ -1,4 +1,4 @@
-1.8.0 (2026-01-xx)
+1.8.0 (2026-02-24)
 ------------------
 
 New Features
@@ -6,19 +6,33 @@ New Features
 
 - Added uncertainty propagation to ``specreduce.extract.BoxcarExtract`` and
   ``specreduce.extract.HorneExtract``. The extracted spectra have now proper uncertainties.
+  [#295, #296]
+
 - Added uncertainty propagation to ``specreduce.background.Background``. The
   ``bkg_image()``, ``bkg_spectrum()``, ``sub_image()``, and ``sub_spectrum()`` methods
   now return spectra with proper uncertainties. When input image has uncertainty, it is
   propagated using variance formulas appropriate for the chosen statistic. When no
-  uncertainty is provided, it is estimated from the flux values in the background region.
+  uncertainty is provided, it is estimated from the flux values in the background region. [#297]
+
 - Added optional ``sigma`` parameter to ``specreduce.background.Background`` for sigma
   clipping outlier rejection in background estimation. Default is 5.0; set to ``None``
-  to disable.
+  to disable. [#297]
+
+API Changes
+^^^^^^^^^^^
+
+- Removed ``specreduce.compat`` module and migrated all internal code to use
+  ``specutils.Spectrum`` directly. This breaks compatibility with specutils 1.x.
+  Users must update to specutils ≥2.0. [#299]
+
+- Bumped minimum dependency versions: specutils ≥2.0, astropy ≥6.0,
+  scipy ≥1.14, photutils ≥1.11. These increases are required for
+  specutils 2.0 compatibility. [#299]
 
 Other changes
 ^^^^^^^^^^^^^
 
-- Changed to use ``sphinx_astropy.conf.v2`` and revised the documentation.
+- Changed to use ``sphinx_astropy.conf.v2`` and revised the documentation. [#275]
 
 1.7.0 (2025-11-13)
 ------------------
