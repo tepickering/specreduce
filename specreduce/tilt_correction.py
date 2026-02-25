@@ -8,9 +8,8 @@ from astropy.nddata import StdDevUncertainty, NDData
 from numpy import ndarray, repeat, tile
 from scipy.optimize import minimize
 from scipy.spatial import KDTree
-from specutils import Spectrum1D
+from specutils import Spectrum
 
-from specreduce.compat import Spectrum
 from specreduce.core import _ImageParser
 from specreduce.line_matching import find_arc_lines
 from specreduce.tilt_solution import TiltSolution
@@ -38,7 +37,7 @@ class TiltCorrection:
             "apply_nan_only",
         ] = "apply",
     ):
-        """A class for 2D spectrum rectification.
+        """A class for 2D tilt correction.
 
          Parameters
          ----------
@@ -110,7 +109,7 @@ class TiltCorrection:
         self._samples_rec_y: Sequence[ndarray] | None = None
         self._samples_det_x: Sequence[ndarray] | None = None
         self._samples_det_y: Sequence[ndarray] | None = None
-        self._arc_spectra: Sequence[Spectrum1D] | None = None
+        self._arc_spectra: Sequence[Spectrum] | None = None
         self._trees: Sequence[KDTree] | None = None
 
         if disp_ref_position is None:
@@ -191,7 +190,7 @@ class TiltCorrection:
         ]
 
     def fit(self, degree: int = 3, method: str = "Powell", max_distance: float = 10) -> None:
-        """Fit a 2D polynomial transformation from rectified space to detector space.
+        """Fit a 2D polynomial transformation from tilt-corrected space to detector space.
 
         The transformation is calculated by minimizing the sum of distances between transformed
         samples and their corresponding detector-space targets. The minimization is performed in
@@ -244,7 +243,7 @@ class TiltCorrection:
         self.refine_fit(degree)
 
     def refine_fit(self, degree: int = 4, match_distance_bound: float = 5.0) -> None:
-        """Refine the rectified space -> detector space transformation model parameters.
+        """Refine the tilt-corrected space -> detector space transformation model parameters.
 
         Refines the polynomial fit model parameters for matching features with a specified
         degree and match distance bound. The refinement includes matching lines, updating a
