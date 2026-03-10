@@ -121,7 +121,7 @@ class TiltCorrection:
         if trace is not None:
             self.trace = trace
             disp_ref_position = self.trace.trace.size // 2
-            cdisp_ref_position = self.trace.trace[disp_ref_position]
+            cdisp_ref_position = int(self.trace.trace[disp_ref_position])
         else:
             if cdisp_ref_position is None:
                 raise ValueError("cdisp_ref_position must be provided if trace is not provided.")
