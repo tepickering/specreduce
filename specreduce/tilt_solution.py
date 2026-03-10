@@ -4,7 +4,7 @@ from functools import cached_property
 from typing import Sequence, Literal
 
 import numpy as np
-from astropy.modeling import models
+from astropy.modeling import models, Model
 from astropy.nddata import NDData
 from numpy import ndarray
 
@@ -40,10 +40,10 @@ def diff_poly2d_x(model: models.Polynomial2D) -> models.Polynomial2D:
 
 
 class TiltSolution:
-    def __init__(self, solution: models.Model, disp_axis: int = 1):
-        self._shift: models.Model = solution[0]
-        self._r2d: models.Model = solution
-        self._r2d_dxdx: None | models.Model = None
+    def __init__(self, solution: Model, disp_axis: int = 1):
+        self._shift: Model = solution[:2]
+        self._r2d: Model = solution
+        self._r2d_dxdx: None | Model = None
         self.disp_axis = disp_axis
 
     @property

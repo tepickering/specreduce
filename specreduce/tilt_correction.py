@@ -22,11 +22,11 @@ class TiltCorrection:
         self,
         arc_frames: NDData | Sequence[NDData],
         crossdisp_ref_position: float,
+        disp_ref_position: float | None = None,
         n_crossdisp_samples: int = 10,
         crossdisp_sample_lims: tuple[float, float] | None = None,
         crossdisp_samples: Sequence[float] | None = None,
         disp_axis: int = 1,
-        disp_ref_position: float | None = None,
         mask_treatment: Literal[
             "apply",
             "ignore",
@@ -48,6 +48,10 @@ class TiltCorrection:
              A reference pixel position along the cross-dispersion axis. Should be close to the
              spectrum trace's average cross-dispersion position for best results.
 
+        disp_ref_position
+             A reference pixel position along the dispersion axis. Should be close to the
+             center of the frame along the dispersion axis for best results.
+
          n_crossdisp_samples
              Number of cross-dispersion (CD) samples to generate.
 
@@ -59,10 +63,6 @@ class TiltCorrection:
 
          disp_axis
              The index of the image's dispersion axis.
-
-        disp_ref_position
-             A reference pixel position along the dispersion axis. Should be close to the
-             center of the frame along the dispersion axis for best results.
 
         mask_treatment
              Specifies how to handle masked or non-finite values in the input image.
@@ -113,7 +113,7 @@ class TiltCorrection:
         self._trees: Sequence[KDTree] | None = None
 
         if disp_ref_position is None:
-            disp_ref_position = self._arc_spectra[0].shape[disp_axis] / 2.0
+            disp_ref_position = self.arc_frames[0].data.shape[disp_axis] // 2
 
         self.ref_pixel = (crossdisp_ref_position, disp_ref_position)
         self._shift = models.Shift(-self.ref_pixel[0]) & models.Shift(-self.ref_pixel[1])
@@ -162,8 +162,8 @@ class TiltCorrection:
 
                 # Find the line centroids for the reference row
                 spectrum = Spectrum(
-                    d.data[self.ref_pixel[1]] * d.unit,
-                    uncertainty=d[self.ref_pixel[1]].uncertainty.represent_as(StdDevUncertainty),
+                    d.data[self.ref_pixel[0]] * d.unit,
+                    uncertainty=d.uncertainty[self.ref_pixel[0]].represent_as(StdDevUncertainty),
                 )
                 lines = find_arc_lines(spectrum, fwhm, noise_factor=noise_factor)
                 self._lines_ref.append(lines["centroid"].value)
@@ -172,7 +172,7 @@ class TiltCorrection:
                 for s in self.cd_samples:
                     spectrum = Spectrum(
                         d.data[s] * d.unit,
-                        uncertainty=d[s].uncertainty.represent_as(StdDevUncertainty),
+                        uncertainty=d.uncertainty[s].represent_as(StdDevUncertainty),
                     )
                     lines = find_arc_lines(spectrum, fwhm, noise_factor=noise_factor)
                     samples_x[i].append(lines["centroid"].value)
@@ -241,6 +241,7 @@ class TiltCorrection:
 
         # Calculate the final fit using least-squares optimization between matched lines
         self.refine_fit(degree)
+
 
     def refine_fit(self, degree: int = 4, match_distance_bound: float = 5.0) -> None:
         """Refine the tilt-corrected space -> detector space transformation model parameters.
