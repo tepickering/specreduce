@@ -21,11 +21,11 @@ class TiltCorrection:
     def __init__(
         self,
         arc_frames: NDData | Sequence[NDData],
-        crossdisp_ref_position: float,
+        cdisp_ref_position: float,
         disp_ref_position: float | None = None,
-        n_crossdisp_samples: int = 10,
-        crossdisp_sample_lims: tuple[float, float] | None = None,
-        crossdisp_samples: Sequence[float] | None = None,
+        n_cdisp_samples: int = 10,
+        cdisp_sample_lims: tuple[float, float] | None = None,
+        cdisp_samples: Sequence[float] | None = None,
         disp_axis: int = 1,
         mask_treatment: Literal[
             "apply",
@@ -44,27 +44,27 @@ class TiltCorrection:
          arc_frames
              A sequence of arc frames as `~astropy.nddata.NDData` instances.
 
-         crossdisp_ref_position
+         cdisp_ref_position
              A reference pixel position along the cross-dispersion axis. Should be close to the
              spectrum trace's average cross-dispersion position for best results.
 
-        disp_ref_position
+         disp_ref_position
              A reference pixel position along the dispersion axis. Should be close to the
              center of the frame along the dispersion axis for best results.
 
-         n_crossdisp_samples
+         n_cdisp_samples
              Number of cross-dispersion (CD) samples to generate.
 
-         crossdisp_sample_lims
+         cdisp_sample_lims
              Tuple specifying the limits for calculating cross-dispersion sampling.
 
-         crossdisp_samples
+         cdisp_samples
              A list of cross-dispersion locations to use. Overrides ``n_cd_samples`` if provided.
 
          disp_axis
              The index of the image's dispersion axis.
 
-        mask_treatment
+         mask_treatment
              Specifies how to handle masked or non-finite values in the input image.
              The accepted values are:
 
@@ -115,18 +115,18 @@ class TiltCorrection:
         if disp_ref_position is None:
             disp_ref_position = self.arc_frames[0].data.shape[disp_axis] // 2
 
-        self.ref_pixel = (crossdisp_ref_position, disp_ref_position)
-        self._shift = models.Shift(-self.ref_pixel[0]) & models.Shift(-self.ref_pixel[1])
+        self.ref_pixel = (cdisp_ref_position, disp_ref_position)   # Reference pixel (y, x)
+        self._shift = models.Shift(-self.ref_pixel[1]) & models.Shift(-self.ref_pixel[0])
 
         # Calculate the cross-dispersion axis sample positions
-        slims = crossdisp_sample_lims if crossdisp_sample_lims is not None else (0, self._ny)
-        if crossdisp_samples is not None:
-            self.cd_samples = np.array(crossdisp_samples)
+        slims = cdisp_sample_lims if cdisp_sample_lims is not None else (0, self._ny)
+        if cdisp_samples is not None:
+            self.cd_samples = np.array(cdisp_samples)
         else:
             self.cd_samples = slims[0] + np.round(
-                np.arange(1, n_crossdisp_samples + 1)
+                np.arange(1, n_cdisp_samples + 1)
                 * (slims[1] - slims[0])
-                / (n_crossdisp_samples + 1)
+                / (n_cdisp_samples + 1)
             ).astype(int)
         self.ncd = self.cd_samples.size
 
@@ -210,7 +210,7 @@ class TiltCorrection:
         model = self._shift | models.Polynomial2D(3)
 
         coeffs = np.zeros(10)
-        coeffs[0] = self.ref_pixel[0]
+        coeffs[0] = self.ref_pixel[1]
         coeffs[1] = 1
         transformed_points = [tile(a, (2, 1)).T.astype("d") for a in self._samples_rec_y]
 
@@ -221,8 +221,8 @@ class TiltCorrection:
                 transformed_points[i][:, 0] = model.evaluate(
                     self._samples_rec_x[i],
                     self._samples_rec_y[i],
-                    -self.ref_pixel[0],
                     -self.ref_pixel[1],
+                    -self.ref_pixel[0],
                     *coeffs,
                 )
                 total_distance += np.clip(t.query(transformed_points[i])[0], 0, max_distance).sum()

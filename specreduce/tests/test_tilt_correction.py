@@ -4,7 +4,8 @@ from astropy.modeling import models
 from astropy.nddata import StdDevUncertainty
 from astropy.wcs import WCS
 
-from specreduce.tilt_correction import TiltCorrection, diff_poly2d_x
+from specreduce.tilt_correction import TiltCorrection
+from specreduce.tilt_solution import diff_poly2d_x
 from specreduce.utils.synth_data import make_2d_arc_image
 
 
@@ -66,8 +67,8 @@ def test_diff_poly2d_x_zero_x_coefficients():
 
 
 def test_init_default_params(mk_arc_frames):
-    tilt_correction = TiltCorrection(ref_pixel=(128, 64), arc_frames=mk_arc_frames)
-    assert tilt_correction.ref_pixel == (128, 64)
+    tilt_correction = TiltCorrection(arc_frames=mk_arc_frames, cdisp_ref_position=64, disp_ref_position=256)
+    assert tilt_correction.ref_pixel == (64, 256)
     assert tilt_correction.disp_axis == 1
     assert tilt_correction.mask_treatment == "apply"
     assert len(tilt_correction.arc_frames) == 2
@@ -75,7 +76,7 @@ def test_init_default_params(mk_arc_frames):
 
 def test_find_lines(mk_arc_frames):
     tc = TiltCorrection(
-        ref_pixel=(256, 64), arc_frames=mk_arc_frames, crossdisp_sample_lims=(0, 128), n_crossdisp_samples=8
+        arc_frames=mk_arc_frames, cdisp_ref_position=64, disp_ref_position=256, cdisp_sample_lims=(0, 128), n_cdisp_samples=8
     )
     tc.find_arc_lines(3.0, 5.0)
     np.testing.assert_array_equal(tc.cd_samples, np.array([14, 28, 43, 57, 71, 85, 100, 114]))
@@ -83,7 +84,7 @@ def test_find_lines(mk_arc_frames):
 
 def test_fit(mk_arc_frames):
     tc = TiltCorrection(
-        ref_pixel=(256, 64), arc_frames=mk_arc_frames, crossdisp_sample_lims=(0, 128), n_crossdisp_samples=8
+        arc_frames=mk_arc_frames, cdisp_ref_position=64, disp_ref_position=256, cdisp_sample_lims=(0, 128), n_cdisp_samples=8
     )
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
@@ -91,7 +92,7 @@ def test_fit(mk_arc_frames):
 
 def test_plot_fit_quality(mk_arc_frames):
     tc = TiltCorrection(
-        ref_pixel=(256, 64), arc_frames=mk_arc_frames, crossdisp_sample_lims=(0, 128), n_crossdisp_samples=8
+        arc_frames=mk_arc_frames, cdisp_ref_position=64, disp_ref_position=256, cdisp_sample_lims=(0, 128), n_cdisp_samples=8
     )
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
@@ -100,7 +101,7 @@ def test_plot_fit_quality(mk_arc_frames):
 
 def test_plot_wavelength_contours(mk_arc_frames):
     tc = TiltCorrection(
-        ref_pixel=(256, 64), arc_frames=mk_arc_frames, crossdisp_sample_lims=(0, 128), n_crossdisp_samples=8
+        arc_frames=mk_arc_frames, cdisp_ref_position=64, disp_ref_position=256, cdisp_sample_lims=(0, 128), n_cdisp_samples=8
     )
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
@@ -110,7 +111,7 @@ def test_plot_wavelength_contours(mk_arc_frames):
 def test_rectify(mk_arc_frames):
     arcs = mk_arc_frames
     tc = TiltCorrection(
-        ref_pixel=(256, 64), arc_frames=arcs, crossdisp_sample_lims=(0, 128), n_crossdisp_samples=8
+        arc_frames=arcs, cdisp_ref_position=64, disp_ref_position=256, cdisp_sample_lims=(0, 128), n_cdisp_samples=8
     )
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
