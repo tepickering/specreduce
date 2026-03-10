@@ -1,3 +1,5 @@
+.. _tilt_correction:
+
 Tilt Correction
 ===============
 
@@ -16,23 +18,217 @@ images so that wavelengths become aligned along straight lines parallel to the d
 process known as 2D rectification). This alignment is essential for achieving accurate
 wavelength calibration and performing robust sky subtraction.
 
-In the `specreduce` package, the tilt function is represented as a 2D polynomial using an
-``~astropy.modeling.models.Polynomial2D`` instance of a specified degree. The
-``~specreduce.tilt_correction.TiltCorrection`` class implements this correction through several
-steps:
+The ``specreduce`` library provides two complementary classes for 2D tilt correction:
 
-1. Identifying emission lines in one or more arc lamp calibration spectra for a given number of
-   cross-dispersion sample positions
-2. Fitting a 2D polynomial model to characterize the geometric distortion
-3. Computing a transformation that maps the tilted features to straight lines
-4. Applying this transformation to rectify the observed frames
+- :class:`~specreduce.tilt_correction.TiltCorrection`: a high-level calibration workflow
+  to detect arc lines across the detector, fit a 2D polynomial tilt model, and inspect the
+  results.
+- :class:`~specreduce.tilt_solution.TiltSolution`: a lightweight solution container that
+  holds the rectified-to-detector coordinate transform and provides flux-conserving 2D
+  resampling.
+
+The tilt function is represented as a 2D polynomial using an
+:class:`~astropy.modeling.models.Polynomial2D` instance. A typical workflow involves:
+
+1. **Initialization**: Create an instance with arc lamp data and reference positions.
+2. **Line Detection**: Identify emission lines across the detector.
+3. **Fitting**: Fit a 2D polynomial model to characterize the geometric distortion.
+4. **Inspection**: Assess fit quality using diagnostic plots.
+5. **Applying the Solution**: Use the fitted solution to rectify observed frames.
+
+Quickstart
+----------
+
+1. Initialization
+*****************
+
+You instantiate :class:`~specreduce.tilt_correction.TiltCorrection` by providing arc lamp
+calibration frames and a reference position along the cross-dispersion axis:
+
+.. code-block:: python
+
+    from specreduce.tilt_correction import TiltCorrection
+
+    tc = TiltCorrection(arc_frames=arc_ndata,
+                        cdisp_ref_position=512)
+
+Key parameters:
+
+*   **arc_frames**: One or more arc lamp frames as `~astropy.nddata.NDData` instances (or a
+    sequence of them). Multiple arc frames are supported for combining different lamps.
+
+*   **cdisp_ref_position**: The reference pixel position along the cross-dispersion axis.
+    Should be close to the trace's average cross-dispersion position for best results.
+
+*   **disp_ref_position**: The reference pixel position along the dispersion axis. Defaults
+    to the center of the frame if not provided.
+
+*   **n_cdisp_samples**: Number of cross-dispersion sample positions to generate (default 10).
+    Arc lines are measured at each sample position to characterize how line centroids shift
+    across the spatial axis.
+
+*   **cdisp_sample_lims**: Tuple ``(min, max)`` specifying the range for cross-dispersion
+    sampling. Defaults to the full extent of the frame.
+
+*   **cdisp_samples**: An explicit list of cross-dispersion positions to use instead of
+    automatically generated ones. Overrides ``n_cdisp_samples`` if provided.
+
+*   **mask_treatment**: Controls how masked or non-finite values are handled in the input
+    image. Accepts any of the standard ``specreduce`` masking options (``"apply"``,
+    ``"ignore"``, ``"propagate"``, ``"zero_fill"``, ``"nan_fill"``,
+    ``"apply_mask_only"``, ``"apply_nan_only"``).
+
+You can also provide multiple arc frames:
+
+.. code-block:: python
+
+    tc = TiltCorrection(arc_frames=[arc_hgar, arc_ne],
+                        cdisp_ref_position=512,
+                        n_cdisp_samples=15,
+                        cdisp_sample_lims=(50, 950))
+
+2. Finding Arc Lines
+********************
+
+After initialization, detect emission lines at the reference row and at each cross-dispersion
+sample position using
+:meth:`~specreduce.tilt_correction.TiltCorrection.find_arc_lines`:
+
+.. code-block:: python
+
+    tc.find_arc_lines(fwhm=3.5, noise_factor=5)
+
+This method:
+
+1. Identifies line centroids at the **reference row** (set by ``cdisp_ref_position``) —
+   these define the "ideal" line positions.
+2. Identifies line centroids at each **cross-dispersion sample** position.
+3. Builds KD-trees from the sample positions for efficient nearest-neighbor matching
+   during the fitting step.
+
+Parameters:
+
+*   **fwhm**: Expected full width at half maximum of the spectral lines (in pixels), used by
+    the line-finding algorithm.
+*   **noise_factor**: Multiplier for noise thresholding — lines below
+    ``noise_factor × noise_level`` are rejected. Default is 5.
+
+3. Fitting the Tilt Model
+*************************
+
+Fit a 2D polynomial model that maps coordinates from the tilt-corrected (rectified) space to
+detector space using :meth:`~specreduce.tilt_correction.TiltCorrection.fit`:
+
+.. code-block:: python
+
+    tc.fit(degree=3, max_distance=10)
+
+The fitting proceeds in two stages:
+
+1. **Initial optimization**: Uses ``scipy.optimize.minimize`` (default method: Powell) to
+   minimize the sum of distances between the transformed sample positions and their nearest
+   neighbors in detector space (via the KD-trees).
+2. **Least-squares refinement**: Automatically calls
+   :meth:`~specreduce.tilt_correction.TiltCorrection.refine_fit` to perform a
+   least-squares fit on matched line pairs, using the initial solution as the starting point.
+
+Parameters:
+
+*   **degree**: Degree of the final :class:`~astropy.modeling.models.Polynomial2D` model.
+*   **method**: Optimization method for the initial stage (default ``"Powell"``).
+*   **max_distance**: Maximum distance for nearest-neighbor matching during the initial fit.
+
+After the initial fit, you can further refine the solution with tighter matching constraints:
+
+.. code-block:: python
+
+    tc.refine_fit(degree=4, match_distance_bound=3.0)
+
+This is useful for iteratively tightening the match distance to reject outliers and
+improve the polynomial fit.
+
+4. Inspecting the Fit
+*********************
+
+Several diagnostic tools help assess the quality of the tilt solution:
+
+*   **Residual visualization**: Use
+    :meth:`~specreduce.tilt_correction.TiltCorrection.plot_fit_quality` to see a 2D scatter
+    of matched lines (sized by residual magnitude) with 1D residual projections along both
+    axes:
+
+    .. code-block:: python
+
+        fig = tc.plot_fit_quality(max_match_distance=5)
+
+*   **Wavelength contours**: Use
+    :meth:`~specreduce.tilt_correction.TiltCorrection.plot_wavelength_contours` to overlay
+    constant-wavelength contour lines on a detector image, verifying that the tilt model
+    aligns with the arc features:
+
+    .. code-block:: python
+
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots()
+        ax.imshow(arc_ndata.data, origin="lower", aspect="auto")
+        tc.plot_wavelength_contours(ax=ax, ndisp=50)
+
+
+5. Using the Tilt Solution
+**************************
+
+The fitted solution is stored as a :class:`~specreduce.tilt_solution.TiltSolution` instance
+in ``TiltCorrection.solution``. The solution object provides the coordinate transform and
+flux-conserving resampling independently of the calibration workflow.
+
+*   **Coordinate transform**: Use
+    :meth:`~specreduce.tilt_solution.TiltSolution.rec_to_det` to convert coordinates from
+    the rectified (tilt-corrected) space to detector space:
+
+    .. code-block:: python
+
+        ts = tc.solution
+        det_x, det_y = ts.rec_to_det(disp=500, cdisp=300)
+
+*   **Underlying model**: The compound Astropy model (Shift & Shift | Polynomial2D) is
+    accessible via the :attr:`~specreduce.tilt_solution.TiltSolution.cor2det` property:
+
+    .. code-block:: python
+
+        print(ts.cor2det)
+
+*   **Flux-conserving resampling**: Use
+    :meth:`~specreduce.tilt_solution.TiltSolution.resample` to rectify a 2D spectral
+    image. The resampling is exact and conserves flux as long as the tilt-corrected space
+    covers the full detector extent:
+
+    .. code-block:: python
+
+        rectified = ts.resample(science_frame)
+
+    You can control the output grid:
+
+    .. code-block:: python
+
+        # Custom number of bins
+        rectified = ts.resample(science_frame, nbins=1000)
+
+        # Custom bounds
+        rectified = ts.resample(science_frame, bounds=(100, 900))
+
+        # Explicit bin edges
+        rectified = ts.resample(science_frame, bin_edges=np.linspace(50, 950, 501))
+
+    The ``resample`` method accepts a ``mask_treatment`` parameter with the same options as
+    the :class:`~specreduce.tilt_correction.TiltCorrection` constructor.
 
 
 Tutorials
 ---------
 
-The following tutorial provides hands-on examples demonstrating the usage of the
-``~specreduce.tilt_correction.TiltCorrection`` class.
+The following tutorial provides a hands-on example demonstrating the usage of the
+:class:`~specreduce.tilt_correction.TiltCorrection` class with real OSIRIS data.
 
 .. toctree::
    :maxdepth: 1
