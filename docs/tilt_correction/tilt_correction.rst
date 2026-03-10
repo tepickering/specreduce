@@ -198,6 +198,15 @@ flux-conserving resampling independently of the calibration workflow.
 
         print(ts.cor2det)
 
+*   **GWCS object**: Access the `~gwcs.wcs.WCS` object via the
+    :attr:`~specreduce.tilt_solution.TiltSolution.gwcs` property. This represents
+    the full 2D rectified-to-detector coordinate mapping:
+
+    .. code-block:: python
+
+        wcs = ts.gwcs
+        det_x, det_y = wcs(disp_rect, cdisp)
+
 *   **Flux-conserving resampling**: Use
     :meth:`~specreduce.tilt_solution.TiltSolution.resample` to rectify a 2D spectral
     image. The resampling is exact and conserves flux as long as the tilt-corrected space

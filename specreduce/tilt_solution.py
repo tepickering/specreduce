@@ -3,9 +3,13 @@ __all__ = ["TiltSolution"]
 from functools import cached_property
 from typing import Sequence, Literal
 
+import astropy.units as u
+import gwcs
 import numpy as np
 from astropy.modeling import models, Model
+from astropy.modeling.models import Identity, Mapping
 from astropy.nddata import NDData
+from gwcs import coordinate_frames
 from numpy import ndarray
 
 from specreduce.core import _ImageParser
@@ -56,12 +60,38 @@ class TiltSolution:
         self._r2d = value
         if "cor2det_derivative" in self.__dict__:
             del self.cor2det_derivative
+        if "gwcs" in self.__dict__:
+            del self.gwcs
 
     @cached_property
     def cor2det_derivative(self):
         """Tilt-corrected space to detector space transform derivative along the x-axis."""
         self._calculate_derivative()
         return self._r2d_dxdx
+
+    @cached_property
+    def gwcs(self) -> gwcs.wcs.WCS:
+        """GWCS object defining the 2D rectified-to-detector coordinate mapping.
+
+        The forward transform maps ``(disp_rectified, cdisp)`` to
+        ``(disp_detector, cdisp)``, where the cross-dispersion coordinate
+        passes through unchanged.
+        """
+        rectified_frame = coordinate_frames.CoordinateFrame(
+            2, ("PIXEL", "PIXEL"), (0, 1),
+            axes_names=("disp", "cdisp"), unit=[u.pix, u.pix],
+            name="rectified",
+        )
+        detector_frame = coordinate_frames.CoordinateFrame(
+            2, ("PIXEL", "PIXEL"), (0, 1),
+            axes_names=("disp", "cdisp"), unit=[u.pix, u.pix],
+            name="detector",
+        )
+        # self._r2d maps (disp, cdisp) -> disp_det (2 inputs, 1 output).
+        # Build a 2D->2D transform: (disp, cdisp) -> (disp_det, cdisp).
+        full_transform = Mapping((0, 1, 1)) | (self._r2d & Identity(1))
+        pipeline = [(rectified_frame, full_transform), (detector_frame, None)]
+        return gwcs.wcs.WCS(pipeline)
 
     def _calculate_derivative(self):
         """Calculate the derivative for the tilt-corrected space -> detector space transform."""
