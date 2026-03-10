@@ -39,53 +39,53 @@ class TiltCorrection:
             "apply_nan_only",
         ] = "apply",
     ):
-        """A class for 2D tilt correction.
+        """A class for 2D spectral tilt correction.
 
-         Parameters
-         ----------
-         arc_frames
-             A sequence of arc frames as `~astropy.nddata.NDData` instances.
+        This class provides tools for correcting spectral tilt (curvature) in 2D
+        spectroscopic data using arc lamp frames. It identifies arc lines across the
+        cross-dispersion axis and fits a 2D polynomial transformation from a
+        tilt-corrected (rectified) coordinate space to detector space. The resulting
+        `~specreduce.tilt_solution.TiltSolution` can then be used to resample science
+        frames onto a rectified grid.
 
+        Parameters
+        ----------
+        arc_frames
+            A sequence of arc frames as `~astropy.nddata.NDData` instances.
         trace
             A trace object representing the spectrum trace. If provided, it will be used to
             determine the reference positions along the dispersion and cross-dispersion axes.
+        cdisp_ref_position
+            A reference pixel position along the cross-dispersion axis. Should be close to the
+            spectrum trace's average cross-dispersion position for the best results.
+        disp_ref_position
+            A reference pixel position along the dispersion axis. Should be close to the
+            center of the frame along the dispersion axis for best results.
+        n_cdisp_samples
+            Number of cross-dispersion (CD) samples to use.
+        cdisp_sample_lims
+            Tuple specifying the limits for calculating cross-dispersion sampling.
+        cdisp_samples
+            A list of cross-dispersion locations to use. Overrides ``n_cdisp_samples``
+            if provided.
+        disp_axis
+            The index of the image's dispersion axis.
+        mask_treatment
+            Specifies how to handle masked or non-finite values in the input image.
+            The accepted values are:
 
-         cdisp_ref_position
-             A reference pixel position along the cross-dispersion axis. Should be close to the
-             spectrum trace's average cross-dispersion position for best results.
-
-         disp_ref_position
-             A reference pixel position along the dispersion axis. Should be close to the
-             center of the frame along the dispersion axis for best results.
-
-         n_cdisp_samples
-             Number of cross-dispersion (CD) samples to generate.
-
-         cdisp_sample_lims
-             Tuple specifying the limits for calculating cross-dispersion sampling.
-
-         cdisp_samples
-             A list of cross-dispersion locations to use. Overrides ``n_cd_samples`` if provided.
-
-         disp_axis
-             The index of the image's dispersion axis.
-
-         mask_treatment
-             Specifies how to handle masked or non-finite values in the input image.
-             The accepted values are:
-
-             - ``apply``: The image remains unchanged, and any existing mask is combined with a mask
-             derived from non-finite values.
-             - ``ignore``: The image remains unchanged, and any existing mask is dropped.
-             - ``propagate``: The image remains unchanged, and any masked or non-finite pixel
-             causes the mask to extend across the entire cross-dispersion axis.
-             - ``zero_fill``: Pixels that are either masked or non-finite are replaced with 0.0,
-             and the mask is dropped.
-             - ``nan_fill``:  Pixels that are either masked or non-finite are replaced with nan,
-             and the mask is dropped.
-             - ``apply_mask_only``: The  image and mask are left unmodified.
-             - ``apply_nan_only``: The  image is left unmodified, the old mask is dropped,
-             and a new mask is created based on non-finite values.
+            - ``apply``: The image remains unchanged, and any existing mask is combined with a mask
+              derived from non-finite values.
+            - ``ignore``: The image remains unchanged, and any existing mask is dropped.
+            - ``propagate``: The image remains unchanged, and any masked or non-finite pixel
+              causes the mask to extend across the entire cross-dispersion axis.
+            - ``zero_fill``: Pixels that are either masked or non-finite are replaced with 0.0,
+              and the mask is dropped.
+            - ``nan_fill``:  Pixels that are either masked or non-finite are replaced with nan,
+              and the mask is dropped.
+            - ``apply_mask_only``: The  image and mask are left unmodified.
+            - ``apply_nan_only``: The  image is left unmodified, the old mask is dropped,
+              and a new mask is created based on non-finite values.
         """
         self.disp_axis = disp_axis
         self.mask_treatment = mask_treatment
@@ -300,7 +300,6 @@ class TiltCorrection:
         max_distance
             Specifies the maximum allowed distance for matching lines. Matches beyond this distance
             will be ignored.
-
         concatenate
             Specifies whether to concatenate the matched lines.
 
@@ -341,8 +340,8 @@ class TiltCorrection:
 
     def plot_wavelength_contours(
         self,
-        ndisp: int = 50,
-        ncrossdisp: int = 100,
+        n_disp: int = 50,
+        n_cdisp: int = 100,
         disp_values: Sequence[float] | None = None,
         ax: plt.Axes | None = None,
         figsize: tuple[float, float] | None = None,
@@ -352,9 +351,9 @@ class TiltCorrection:
 
         Parameters
         ----------
-        ndisp
+        n_disp
             The number of dispersion-axis lines.
-        ncrossdisp
+        n_cdisp
             The number of cross-dispersion axis points for each disp-axis line.
         disp_values
             A sequence specifying the dispersion-axis coordinates explicitly. If not
@@ -365,7 +364,7 @@ class TiltCorrection:
             are created.
         figsize
             Tuple specifying the size of the figure to create, applicable only if
-            `ax` is None..
+            `ax` is None.
         line_args
             A dictionary of line properties (e.g., color, linewidth, linestyle).
             These properties modify the default styling provided for grid lines.
@@ -387,10 +386,10 @@ class TiltCorrection:
             fig = ax.figure
 
         if disp_values is None:
-            disp_values = tile(np.linspace(0, self.arc_frames[0].data.shape[1], ndisp), (ncrossdisp, 1))
+            disp_values = tile(np.linspace(0, self.arc_frames[0].data.shape[1], n_disp), (n_cdisp, 1))
         else:
-            ndisp = len(disp_values)
-        rows = tile(np.linspace(0, self.arc_frames[0].data.shape[0], ncrossdisp)[:, None], (1, ndisp))
+            n_disp = len(disp_values)
+        rows = tile(np.linspace(0, self.arc_frames[0].data.shape[0], n_cdisp)[:, None], (1, n_disp))
 
         ax.plot(self.solution.cor2det(disp_values, rows), rows, **largs)
         return fig
@@ -398,6 +397,27 @@ class TiltCorrection:
     def plot_fit_quality(
         self, figsize=None, max_match_distance: float = 5, rlim: tuple[float, float] | None = None
     ):
+        """Plot fit quality diagnostics showing residuals of the tilt correction.
+
+        Creates a three-panel figure with a scatter plot of matched line positions
+        and marginal residual plots along the dispersion and cross-dispersion axes.
+
+        Parameters
+        ----------
+        figsize
+            Tuple specifying the size of the figure. If None, the default Matplotlib
+            figure size is used.
+        max_match_distance
+            Maximum distance for matching lines, passed to `match_lines`.
+        rlim
+            Residual axis limits as a tuple (min, max). Applied to both marginal
+            residual plots. If None, limits are set automatically.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The Matplotlib figure containing the diagnostic plots.
+        """
         fig = plt.Figure(figsize=figsize, layout="constrained")
         gs = plt.GridSpec(2, 2, width_ratios=(4, 1), height_ratios=(1, 3), figure=fig)
 

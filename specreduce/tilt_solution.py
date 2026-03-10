@@ -45,6 +45,21 @@ def diff_poly2d_x(model: models.Polynomial2D) -> models.Polynomial2D:
 
 class TiltSolution:
     def __init__(self, solution: Model, disp_axis: int = 1):
+        """A solution for 2D spectral tilt correction.
+
+        This class encapsulates the polynomial transformation from a tilt-corrected
+        (rectified) coordinate space to detector space. It provides methods for
+        coordinate transformation, flux-conserving resampling, and export to a GWCS
+        object.
+
+        Parameters
+        ----------
+        solution
+            An Astropy compound model representing the transformation from
+            tilt-corrected space to detector space along the dispersion axis.
+        disp_axis
+            The index of the image's dispersion axis, by default 1.
+        """
         self._shift: Model = solution[:2]
         self._r2d: Model = solution
         self._r2d_dxdx: None | Model = None
@@ -52,7 +67,7 @@ class TiltSolution:
 
     @property
     def cor2det(self):
-        """Tilt-corrected space to detector space transform in x-axis: (x, y) -> x."""
+        """Transformation from tilt-corrected to detector space along the dispersion axis."""
         return self._r2d
 
     @cor2det.setter
@@ -65,7 +80,7 @@ class TiltSolution:
 
     @cached_property
     def cor2det_derivative(self):
-        """Tilt-corrected space to detector space transform derivative along the x-axis."""
+        """Dispersion-axis derivative of the tilt-corrected to detector space transformation."""
         self._calculate_derivative()
         return self._r2d_dxdx
 
@@ -102,16 +117,16 @@ class TiltSolution:
 
         Parameters
         ----------
-        disp : ndarray
+        disp
             The dispersion-axis coordinates to be transformed.
-        cdisp : ndarray
+        cdisp
             The cross-dispersion coordinates, returned as is.
 
         Returns
         -------
         tuple of (ndarray, ndarray)
             A tuple containing the transformed dispersion-axis coordinates as the first element
-            and the original cross-dispersion-axis coordinates as the second element..
+            and the original cross-dispersion-axis coordinates as the second element.
         """
         return self._r2d(disp, cdisp), cdisp
 
@@ -146,7 +161,7 @@ class TiltSolution:
         nbins
             Number of bins in the tilt-corrected space. If None, the number of bins will be set
             to the number of columns in the `flux` input image.
-        bound
+        bounds
             Tuple specifying the start and end coordinates for the tilt-corrected space along the
             x-axis. If None, the bounds default to (0, number of columns in ``flux``).
         bin_edges
@@ -172,7 +187,7 @@ class TiltSolution:
 
         Returns
         -------
-        resampled_flux : ndarray
+        NDData
             NDData instance containing the flux values resampled into the uniform grid
             defined by ``nbins``, ``bounds``, or ``bin_edges``.
         """
