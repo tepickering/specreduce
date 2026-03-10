@@ -13,6 +13,7 @@ from specutils import Spectrum
 from specreduce.core import _ImageParser
 from specreduce.line_matching import find_arc_lines
 from specreduce.tilt_solution import TiltSolution
+from specreduce.tracing import Trace
 
 __all__ = ["TiltCorrection"]
 
@@ -21,7 +22,8 @@ class TiltCorrection:
     def __init__(
         self,
         arc_frames: NDData | Sequence[NDData],
-        cdisp_ref_position: float,
+        trace: Trace | None = None,
+        cdisp_ref_position: float | None = None,
         disp_ref_position: float | None = None,
         n_cdisp_samples: int = 10,
         cdisp_sample_lims: tuple[float, float] | None = None,
@@ -43,6 +45,10 @@ class TiltCorrection:
          ----------
          arc_frames
              A sequence of arc frames as `~astropy.nddata.NDData` instances.
+
+        trace
+            A trace object representing the spectrum trace. If provided, it will be used to
+            determine the reference positions along the dispersion and cross-dispersion axes.
 
          cdisp_ref_position
              A reference pixel position along the cross-dispersion axis. Should be close to the
@@ -112,8 +118,15 @@ class TiltCorrection:
         self._arc_spectra: Sequence[Spectrum] | None = None
         self._trees: Sequence[KDTree] | None = None
 
-        if disp_ref_position is None:
-            disp_ref_position = self.arc_frames[0].data.shape[disp_axis] // 2
+        if trace is not None:
+            self.trace = trace
+            disp_ref_position = self.trace.trace.size // 2
+            cdisp_ref_position = self.trace.trace[disp_ref_position]
+        else:
+            if cdisp_ref_position is None:
+                raise ValueError("cdisp_ref_position must be provided if trace is not provided.")
+            if disp_ref_position is None:
+                disp_ref_position = self.arc_frames[0].data.shape[disp_axis] // 2
 
         self.ref_pixel = (cdisp_ref_position, disp_ref_position)   # Reference pixel (y, x)
         self._shift = models.Shift(-self.ref_pixel[1]) & models.Shift(-self.ref_pixel[0])
@@ -189,7 +202,7 @@ class TiltCorrection:
             for lx, ly in zip(self._samples_det_x, self._samples_det_y)
         ]
 
-    def fit(self, degree: int = 3, method: str = "Powell", max_distance: float = 10) -> None:
+    def fit(self, degree: int = 3, method: str = "Powell", max_distance: float = 10) -> TiltSolution:
         """Fit a 2D polynomial transformation from tilt-corrected space to detector space.
 
         The transformation is calculated by minimizing the sum of distances between transformed
@@ -241,7 +254,7 @@ class TiltCorrection:
 
         # Calculate the final fit using least-squares optimization between matched lines
         self.refine_fit(degree)
-
+        return self.solution
 
     def refine_fit(self, degree: int = 4, match_distance_bound: float = 5.0) -> None:
         """Refine the tilt-corrected space -> detector space transformation model parameters.
