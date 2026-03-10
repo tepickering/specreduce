@@ -108,11 +108,11 @@ def test_plot_wavelength_contours(mk_arc_frames):
     tc.plot_wavelength_contours()
 
 
-def test_rectify(mk_arc_frames):
+def test_resample(mk_arc_frames):
     arcs = mk_arc_frames
     tc = TiltCorrection(
         arc_frames=arcs, cdisp_ref_position=64, disp_ref_position=256, cdisp_sample_lims=(0, 128), n_cdisp_samples=8
     )
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
-    tc.rectify(arcs[0])
+    tc.solution.resample(arcs[0])
