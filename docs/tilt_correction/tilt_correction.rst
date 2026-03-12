@@ -3,7 +3,10 @@
 Tilt Correction
 ===============
 
-In astronomical spectroscopy, tilt correction is a calibration step that addresses optical
+.. image::
+   tilt_correction.png
+
+Tilt correction is a calibration step that addresses optical
 distortions and misalignments in spectroscopic instruments. These distortions cause wavelength
 to vary along the cross-dispersion (spatial) axis, resulting in spectral features appearing
 tilted or curved across the detector rather than being perfectly aligned with detector columns.
@@ -14,9 +17,9 @@ from arc lamp calibration spectra by measuring how the centroids of emission lin
 the cross-dispersion axis.
 
 Once characterized, the tilt function enables transformation of two-dimensional spectroscopic
-images so that wavelengths become aligned along straight lines parallel to the detector axes (a
-process known as 2D rectification). This alignment is essential for achieving accurate
-wavelength calibration and performing robust sky subtraction.
+images so that wavelengths become aligned along straight lines parallel to the detector axes.
+This alignment is important for achieving accurate wavelength calibration and performing robust
+sky subtraction.
 
 The ``specreduce`` library provides two complementary classes for 2D tilt correction:
 
