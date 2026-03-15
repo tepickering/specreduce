@@ -31,7 +31,7 @@ The ``specreduce`` library provides two complementary classes for 2D tilt correc
   resampling.
 
 The tilt function is represented as a 2D polynomial using an
-:class:`~astropy.modeling.models.Polynomial2D` instance. A typical workflow involves:
+:class:`~astropy.modeling.polynomial.Polynomial2D` instance. A typical workflow involves:
 
 1. **Initialization**: Create an instance with arc lamp data, a trace, or a reference pixel
    position.
@@ -142,7 +142,7 @@ The fitting proceeds in two stages:
 
 Parameters:
 
-*   **degree**: Degree of the final :class:`~astropy.modeling.models.Polynomial2D` model.
+*   **degree**: Degree of the final :class:`~astropy.modeling.polynomial.Polynomial2D` model.
 *   **method**: Optimization method for the initial stage (default ``"Powell"``).
 *   **max_distance**: Maximum distance for nearest-neighbor matching during the initial fit.
 
