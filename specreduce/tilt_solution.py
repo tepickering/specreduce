@@ -5,7 +5,7 @@ import astropy.units as u
 import gwcs
 import numpy as np
 from astropy.modeling import models, fitting, Model
-from astropy.modeling.models import Identity, Mapping
+from astropy.modeling.models import Identity, Mapping, Shift, Polynomial2D
 from astropy.nddata import NDData
 from gwcs import coordinate_frames
 from numpy import ndarray
@@ -218,6 +218,16 @@ class TiltSolution:
 
         pipeline = [(rectified_frame, full_transform), (detector_frame, None)]
         return gwcs.wcs.WCS(pipeline)
+
+    @staticmethod
+    def from_gwcs(
+        wcs: "gwcs.wcs.WCS", disp_axis: int = 1, image_shape: tuple[int, int] | None = None
+    ):
+        """Create a TiltSolution from a GWCS object."""
+        m = wcs.forward_transform
+        if not (isinstance(m[1], Shift) & isinstance(m[2], Shift) & isinstance(m[3], Polynomial2D)):
+            raise ValueError("The GWCS object must contain a 2D polynomial transformation.")
+        return TiltSolution(m[1:-1], disp_axis=disp_axis, image_shape=image_shape)
 
     def resample(
         self,
