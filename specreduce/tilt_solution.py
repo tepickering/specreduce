@@ -310,7 +310,7 @@ class TiltSolution:
         resampled_flux = np.zeros((ny, nbins))
         weights = np.zeros((ny, nx))
 
-        # Calculate the derivative of the tilt-corrected space -> detector space transformation  with
+        # Calculate the derivative of the tilt-corrected space -> detector space transformation with
         # respect to the detector coordinate (dx_rec / dx_det). This is needed for flux
         # conservation, as it represents how the pixel width changes.
         dtdx = self.c2d_derivative(*np.meshgrid(np.arange(nx), np.arange(ny)))
@@ -324,7 +324,7 @@ class TiltSolution:
         ys = np.arange(flux.shape[0])
 
         for i in range(nbins):
-            # Get the detector pixel indices (left and right edges) for the current tilt-corrected bin.
+            # Get the detector pixel indices (left and right edges) for the current bin.
             i1, i2 = bin_edge_ix[:, i : i + 2].T
 
             # Create a mask 'm' where the left and right detector pixel edges are the same.
