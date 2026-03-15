@@ -249,7 +249,8 @@ class TiltCorrection:
             | models.Polynomial2D(
                 model[-1].degree,
                 **{model[-1].param_names[i]: coeffs[i] for i in range(coeffs.size)},
-            )
+            ),
+            image_shape=(self._ny, self._nx),
         )
 
         # Calculate the final fit using least-squares optimization between matched lines

@@ -1,18 +1,18 @@
-__all__ = ["TiltSolution"]
-
 from functools import cached_property
 from typing import Sequence, Literal
 
 import astropy.units as u
 import gwcs
 import numpy as np
-from astropy.modeling import models, Model
+from astropy.modeling import models, fitting, Model
 from astropy.modeling.models import Identity, Mapping
 from astropy.nddata import NDData
 from gwcs import coordinate_frames
 from numpy import ndarray
 
 from specreduce.core import _ImageParser
+
+__all__ = ["TiltSolution"]
 
 
 def diff_poly2d_x(model: models.Polynomial2D) -> models.Polynomial2D:
@@ -44,7 +44,9 @@ def diff_poly2d_x(model: models.Polynomial2D) -> models.Polynomial2D:
 
 
 class TiltSolution:
-    def __init__(self, solution: Model, disp_axis: int = 1):
+    def __init__(
+        self, solution: Model, disp_axis: int = 1, image_shape: tuple[int, int] | None = None
+    ):
         """A solution for 2D spectral tilt correction.
 
         This class encapsulates the polynomial transformation from a tilt-corrected
@@ -59,10 +61,15 @@ class TiltSolution:
             tilt-corrected space to detector space along the dispersion axis.
         disp_axis
             The index of the image's dispersion axis, by default 1.
+        image_shape
+            The shape of the detector image as ``(ny, nx)``. Used to define the
+            grid extent when computing the numerical inverse transform. If not
+            provided here, it must be passed to `_calculate_inverse` directly.
         """
         self._shift: Model = solution[:2]
         self._r2d: Model = solution
         self._r2d_dxdx: None | Model = None
+        self._image_shape = image_shape
         self.disp_axis = disp_axis
 
     @property
@@ -75,6 +82,8 @@ class TiltSolution:
         self._r2d = value
         if "cor2det_derivative" in self.__dict__:
             del self.cor2det_derivative
+        if "det2cor" in self.__dict__:
+            del self.det2cor
         if "gwcs" in self.__dict__:
             del self.gwcs
 
@@ -85,6 +94,74 @@ class TiltSolution:
         return self._r2d_dxdx
 
     @cached_property
+    def det2cor(self):
+        """Transformation from detector to tilt-corrected space along the dispersion axis."""
+        return self._calculate_inverse()
+
+    def _calculate_inverse(
+        self, image_shape: tuple[int, int] | None = None, degree: int = None, n_grid: int = 50
+    ):
+        """Compute the numerical inverse of the forward tilt transform.
+
+        Evaluates the forward transform on a regular grid in rectified space,
+        then fits a polynomial to the reversed mapping ``(disp_det, cdisp) → disp_rec``.
+
+        Parameters
+        ----------
+        image_shape
+            The detector image shape ``(ny, nx)``. Falls back to ``self._image_shape``.
+        degree
+            Degree of the inverse polynomial. Defaults to the forward polynomial degree + 3.
+        n_grid
+            Number of grid points per axis for the fitting grid.
+
+        Returns
+        -------
+        Model
+            A compound model mapping detector coordinates to rectified dispersion coordinates.
+        """
+        image_shape = image_shape or self._image_shape
+        if image_shape is None:
+            raise TypeError(
+                "image_shape must be provided either at construction or as an argument."
+            )
+
+        ny, nx = image_shape
+        degree = degree or self._r2d[-1].degree + 3
+
+        disp_grid, cdisp_grid = np.meshgrid(np.linspace(0, nx, n_grid), np.linspace(0, ny, n_grid))
+        disp_flat = disp_grid.ravel()
+        cdisp_flat = cdisp_grid.ravel()
+        disp_det = self._r2d(disp_flat, cdisp_flat)
+
+        # Fit a plain Polynomial2D on shifted coordinates, then compose with shifts
+        ref_x = -self._shift.offset_0.value
+        ref_y = -self._shift.offset_1.value
+        poly_init = models.Polynomial2D(degree, c0_0=ref_x, c1_0=1.0)
+
+        fitter = fitting.LinearLSQFitter()
+        poly_fit = fitter(poly_init, disp_det - ref_x, cdisp_flat - ref_y, disp_flat)
+        return self._shift | poly_fit
+
+    def det_to_rec(self, disp: ndarray, cdisp: ndarray) -> tuple[ndarray, ndarray]:
+        """Transform coordinates from 2D detector space to 2D tilt-corrected space.
+
+        Parameters
+        ----------
+        disp
+            The dispersion-axis coordinates in detector space.
+        cdisp
+            The cross-dispersion coordinates in detector space.
+
+        Returns
+        -------
+        tuple of (ndarray, ndarray)
+            A tuple containing the transformed dispersion-axis coordinates in
+            tilt-corrected space and the original cross-dispersion coordinates.
+        """
+        return self.det2cor(disp, cdisp), cdisp
+
+    @cached_property
     def gwcs(self) -> gwcs.wcs.WCS:
         """GWCS object defining the 2D rectified-to-detector coordinate mapping.
 
@@ -93,18 +170,30 @@ class TiltSolution:
         passes through unchanged.
         """
         rectified_frame = coordinate_frames.CoordinateFrame(
-            2, ("PIXEL", "PIXEL"), (0, 1),
-            axes_names=("disp", "cdisp"), unit=[u.pix, u.pix],
+            2,
+            ("PIXEL", "PIXEL"),
+            (0, 1),
+            axes_names=("disp", "cdisp"),
+            unit=[u.pix, u.pix],
             name="rectified",
         )
         detector_frame = coordinate_frames.CoordinateFrame(
-            2, ("PIXEL", "PIXEL"), (0, 1),
-            axes_names=("disp", "cdisp"), unit=[u.pix, u.pix],
+            2,
+            ("PIXEL", "PIXEL"),
+            (0, 1),
+            axes_names=("disp", "cdisp"),
+            unit=[u.pix, u.pix],
             name="detector",
         )
         # self._r2d maps (disp, cdisp) -> disp_det (2 inputs, 1 output).
         # Build a 2D->2D transform: (disp, cdisp) -> (disp_det, cdisp).
         full_transform = Mapping((0, 1, 1)) | (self._r2d & Identity(1))
+
+        # Set inverse transform if image_shape is available
+        if self._image_shape is not None:
+            inv_transform = Mapping((0, 1, 1)) | (self.det2cor & Identity(1))
+            full_transform.inverse = inv_transform
+
         pipeline = [(rectified_frame, full_transform), (detector_frame, None)]
         return gwcs.wcs.WCS(pipeline)
 
