@@ -27,17 +27,18 @@ The ``specreduce`` library provides two complementary classes for 2D tilt correc
   to detect arc lines across the detector, fit a 2D polynomial tilt model, and inspect the
   results.
 - :class:`~specreduce.tilt_solution.TiltSolution`: a lightweight solution container that
-  holds the rectified-to-detector coordinate transform and provides flux-conserving 2D
+  holds the tilt-corrected-to-detector coordinate transform and provides flux-conserving 2D
   resampling.
 
 The tilt function is represented as a 2D polynomial using an
 :class:`~astropy.modeling.models.Polynomial2D` instance. A typical workflow involves:
 
-1. **Initialization**: Create an instance with arc lamp data and reference positions.
+1. **Initialization**: Create an instance with arc lamp data, a trace, or a reference pixel
+   position.
 2. **Line Detection**: Identify emission lines across the detector.
 3. **Fitting**: Fit a 2D polynomial model to characterize the geometric distortion.
 4. **Inspection**: Assess fit quality using diagnostic plots.
-5. **Applying the Solution**: Use the fitted solution to rectify observed frames.
+5. **Applying the Solution**: Use the fitted solution to tilt-correct observed frames.
 
 Quickstart
 ----------
@@ -60,7 +61,7 @@ Alternatively, you can specify the reference positions manually without a trace:
 
 .. code-block:: python
 
-    tc = TiltCorrection(arc_frames=arc, cdisp_ref_pixel=512, disp_ref_pixel=1024)
+    tc = TiltCorrection(arc_frames=arc, cdisp_ref_pixel=512)
 
 Key parameters:
 
@@ -189,20 +190,20 @@ in ``TiltCorrection.solution``. The solution object provides the coordinate tran
 flux-conserving resampling independently of the calibration workflow.
 
 *   **Coordinate transform**: Use
-    :meth:`~specreduce.tilt_solution.TiltSolution.rec_to_det` to convert coordinates from
-    the rectified (tilt-corrected) space to detector space:
+    :meth:`~specreduce.tilt_solution.TiltSolution.corr_to_det` to convert coordinates from
+    the tilt-corrected space to detector space:
 
     .. code-block:: python
 
         ts = tc.solution
-        det_x, det_y = ts.rec_to_det(disp=500, cdisp=300)
+        det_x, det_y = ts.corr_to_det(disp=500, cdisp=300)
 
 *   **Underlying model**: The compound Astropy model is accessible via the
-    :attr:`~specreduce.tilt_solution.TiltSolution.cor2det` property:
+    :attr:`~specreduce.tilt_solution.TiltSolution.c2d` property:
 
     .. code-block:: python
 
-        print(ts.cor2det)
+        print(ts.c2d)
 
 *   **GWCS object**: Access the `~gwcs.wcs.WCS` object via the
     :attr:`~specreduce.tilt_solution.TiltSolution.gwcs` property. This represents
@@ -227,13 +228,13 @@ flux-conserving resampling independently of the calibration workflow.
     .. code-block:: python
 
         # Custom number of bins
-        rectified = ts.resample(science_frame, nbins=1000)
+        corrected = ts.resample(science_frame, nbins=1000)
 
         # Custom bounds
-        rectified = ts.resample(science_frame, bounds=(100, 900))
+        corrected = ts.resample(science_frame, bounds=(100, 900))
 
         # Explicit bin edges
-        rectified = ts.resample(science_frame, bin_edges=np.linspace(50, 950, 501))
+        corrected = ts.resample(science_frame, bin_edges=np.linspace(50, 950, 501))
 
     The ``resample`` method accepts a ``mask_treatment`` parameter with the same options as
     the :class:`~specreduce.tilt_correction.TiltCorrection` constructor.
