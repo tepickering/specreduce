@@ -6,13 +6,13 @@ from astropy.wcs import WCS
 
 from specreduce.tilt_correction import TiltCorrection
 from specreduce.tilt_solution import diff_poly2d_x
+from specreduce.tracing import FlatTrace
 from specreduce.utils.synth_data import make_2d_arc_image
 
 
 # Arc frame creation code taken from Tim Pickering's example notebook
 @pytest.fixture
 def mk_arc_frames():
-
     blue_channel_header = {
         "CTYPE1": "AWAV-GRA",  # Grating dispersion function with air wavelengths
         "CUNIT1": "Angstrom",  # Dispersion units
@@ -48,6 +48,16 @@ def mk_arc_frames():
     return arcs
 
 
+@pytest.fixture
+def mk_defaul_tc(mk_arc_frames):
+    tc = TiltCorrection(
+        arc_frames=mk_arc_frames,
+        cdisp_ref_pixel=64,
+        n_cdisp_samples=8,
+    )
+    return tc
+
+
 def test_diff_poly2d_x_valid_derivative():
     model = models.Polynomial2D(degree=2, c0_0=1, c1_0=2, c2_0=3, c0_1=4, c1_1=5, c0_2=6)
     derivative = diff_poly2d_x(model)
@@ -57,89 +67,61 @@ def test_diff_poly2d_x_valid_derivative():
     assert derivative.c0_1 == 5
 
 
+def test_init_trace(mk_arc_frames):
+    arcs = mk_arc_frames
+    trace = FlatTrace(arcs[0], arcs[0].shape[0] // 2)
+    tc = TiltCorrection(arc_frames=arcs, trace=trace)
+    assert tc.ref_pixel == (arcs[0].shape[0] // 2, arcs[0].shape[1] // 2)
+
+
 def test_init_default_params(mk_arc_frames):
-    tilt_correction = TiltCorrection(
-        arc_frames=mk_arc_frames, cdisp_ref_pixel=64, disp_ref_pixel=256
-    )
-    assert tilt_correction.ref_pixel == (64, 256)
-    assert tilt_correction.disp_axis == 1
-    assert tilt_correction.mask_treatment == "apply"
-    assert len(tilt_correction.arc_frames) == 2
+    arcs = mk_arc_frames
+    tc = TiltCorrection(arcs, cdisp_ref_pixel=64, disp_ref_pixel=256)
+    assert tc.ref_pixel == (64, 256)
+    assert tc.disp_axis == 1
+    assert tc.mask_treatment == "apply"
+    assert len(tc.arc_frames) == 2
+
+    tc = TiltCorrection(arcs, cdisp_ref_pixel=64)
+    assert tc.ref_pixel == (64, arcs[0].shape[1] // 2)
 
 
-def test_find_lines(mk_arc_frames):
-    tc = TiltCorrection(
-        arc_frames=mk_arc_frames,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+def test_find_lines(mk_defaul_tc):
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     np.testing.assert_array_equal(tc.cd_samples, np.array([14, 28, 43, 57, 71, 85, 100, 114]))
 
 
-def test_fit(mk_arc_frames):
-    tc = TiltCorrection(
-        arc_frames=mk_arc_frames,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+def test_fit(mk_defaul_tc):
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
 
 
-def test_plot_fit_quality(mk_arc_frames):
-    tc = TiltCorrection(
-        arc_frames=mk_arc_frames,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+def test_plot_fit_quality(mk_defaul_tc):
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     tc.plot_fit_quality()
 
 
-def test_plot_wavelength_contours(mk_arc_frames):
-    tc = TiltCorrection(
-        arc_frames=mk_arc_frames,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+def test_plot_wavelength_contours(mk_defaul_tc):
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     tc.plot_wavelength_contours()
 
 
-def test_resample(mk_arc_frames):
+def test_resample(mk_defaul_tc, mk_arc_frames):
     arcs = mk_arc_frames
-    tc = TiltCorrection(
-        arc_frames=arcs,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     tc.solution.resample(arcs[0])
 
 
-def test_tilt_solution_gwcs(mk_arc_frames):
-    arcs = mk_arc_frames
-    tc = TiltCorrection(
-        arc_frames=arcs,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+def test_tilt_solution_gwcs(mk_defaul_tc):
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
@@ -161,15 +143,8 @@ def test_tilt_solution_gwcs(mk_arc_frames):
     np.testing.assert_allclose(det_y_gwcs, cdisp_arr)
 
 
-def test_tilt_solution_gwcs_cache_invalidation(mk_arc_frames):
-    arcs = mk_arc_frames
-    tc = TiltCorrection(
-        arc_frames=arcs,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+def test_tilt_solution_gwcs_cache_invalidation(mk_defaul_tc):
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
@@ -183,39 +158,25 @@ def test_tilt_solution_gwcs_cache_invalidation(mk_arc_frames):
     assert "gwcs" not in ts.__dict__
 
 
-def test_det2cor_round_trip(mk_arc_frames):
-    arcs = mk_arc_frames
-    tc = TiltCorrection(
-        arc_frames=arcs,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+def test_det_to_corr_round_trip(mk_defaul_tc):
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
 
-    # Test round-trip: rec_to_det then det_to_rec should recover original coordinates
-    disp_rec = np.array([100.0, 200.0, 300.0, 400.0])
+    # Test round-trip: corr_to_det then det_to_corr should recover original coordinates
+    disp_cor = np.array([100.0, 200.0, 300.0, 400.0])
     cdisp = np.array([20.0, 40.0, 80.0, 100.0])
 
-    disp_det, cdisp_out = ts.corr_to_det(disp_rec, cdisp)
-    disp_rec_recovered, cdisp_out2 = ts.det_to_corr(disp_det, cdisp_out)
+    disp_det, cdisp_out = ts.corr_to_det(disp_cor, cdisp)
+    disp_cor_recovered, cdisp_out2 = ts.det_to_corr(disp_det, cdisp_out)
 
-    np.testing.assert_allclose(disp_rec_recovered, disp_rec, atol=0.01)
+    np.testing.assert_allclose(disp_cor_recovered, disp_cor, atol=0.01)
     np.testing.assert_allclose(cdisp_out2, cdisp)
 
 
-def test_det2cor_cache_invalidation(mk_arc_frames):
-    arcs = mk_arc_frames
-    tc = TiltCorrection(
-        arc_frames=arcs,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+def test_d2c_cache_invalidation(mk_defaul_tc):
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
@@ -229,29 +190,22 @@ def test_det2cor_cache_invalidation(mk_arc_frames):
     assert "d2c" not in ts.__dict__
 
 
-def test_gwcs_inverse(mk_arc_frames):
-    arcs = mk_arc_frames
-    tc = TiltCorrection(
-        arc_frames=arcs,
-        cdisp_ref_pixel=64,
-        disp_ref_pixel=256,
-        cdisp_sample_lims=(0, 128),
-        n_cdisp_samples=8,
-    )
+def test_gwcs_inverse(mk_defaul_tc):
+    tc = mk_defaul_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
 
-    disp_rec = np.array([100.0, 200.0, 300.0])
+    disp_cor = np.array([100.0, 200.0, 300.0])
     cdisp = np.array([30.0, 60.0, 90.0])
 
     # Forward: rectified -> detector via GWCS
-    disp_det, cdisp_det = ts.gwcs(disp_rec, cdisp)
+    disp_det, cdisp_det = ts.gwcs(disp_cor, cdisp)
 
     # Inverse: detector -> rectified via GWCS
-    disp_rec_inv, cdisp_rec_inv = ts.gwcs.invert(disp_det, cdisp_det)
+    disp_cor_inv, cdisp_cor_inv = ts.gwcs.invert(disp_det, cdisp_det)
 
-    # Should match det_to_rec
+    # Should match det_to_corr
     disp_rec_direct, cdisp_direct = ts.det_to_corr(disp_det, cdisp_det)
-    np.testing.assert_allclose(disp_rec_inv, disp_rec_direct)
-    np.testing.assert_allclose(cdisp_rec_inv, cdisp_direct)
+    np.testing.assert_allclose(disp_cor_inv, disp_rec_direct)
+    np.testing.assert_allclose(cdisp_cor_inv, cdisp_direct)
