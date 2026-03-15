@@ -23,8 +23,8 @@ class TiltCorrection:
         self,
         arc_frames: NDData | Sequence[NDData],
         trace: Trace | None = None,
-        cdisp_ref_position: float | None = None,
-        disp_ref_position: float | None = None,
+        cdisp_ref_pixel: float | None = None,
+        disp_ref_pixel: float | None = None,
         n_cdisp_samples: int = 10,
         cdisp_sample_lims: tuple[float, float] | None = None,
         cdisp_samples: Sequence[float] | None = None,
@@ -55,10 +55,10 @@ class TiltCorrection:
         trace
             A trace object representing the spectrum trace. If provided, it will be used to
             determine the reference positions along the dispersion and cross-dispersion axes.
-        cdisp_ref_position
+        cdisp_ref_pixel
             A reference pixel position along the cross-dispersion axis. Should be close to the
             spectrum trace's average cross-dispersion position for the best results.
-        disp_ref_position
+        disp_ref_pixel
             A reference pixel position along the dispersion axis. Should be close to the
             center of the frame along the dispersion axis for best results.
         n_cdisp_samples
@@ -120,15 +120,15 @@ class TiltCorrection:
 
         if trace is not None:
             self.trace = trace
-            disp_ref_position = self.trace.trace.size // 2
-            cdisp_ref_position = int(self.trace.trace[disp_ref_position])
+            disp_ref_pixel = self.trace.trace.size // 2
+            cdisp_ref_pixel = int(self.trace.trace[disp_ref_pixel])
         else:
-            if cdisp_ref_position is None:
+            if cdisp_ref_pixel is None:
                 raise ValueError("cdisp_ref_position must be provided if trace is not provided.")
-            if disp_ref_position is None:
-                disp_ref_position = self.arc_frames[0].data.shape[disp_axis] // 2
+            if disp_ref_pixel is None:
+                disp_ref_pixel = self.arc_frames[0].data.shape[disp_axis] // 2
 
-        self.ref_pixel = (cdisp_ref_position, disp_ref_position)   # Reference pixel (y, x)
+        self.ref_pixel = (cdisp_ref_pixel, disp_ref_pixel)   # Reference pixel (y, x)
         self._shift = models.Shift(-self.ref_pixel[1]) & models.Shift(-self.ref_pixel[0])
 
         # Calculate the cross-dispersion axis sample positions
