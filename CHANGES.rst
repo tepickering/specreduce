@@ -1,3 +1,20 @@
+
+1.9.0 (unreleased)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Added new ``specreduce.tilt_correction`` module with a ``TiltCorrection`` class
+  for detecting and fitting 2D spectral tilt from arc lamp images.
+
+- Added new ``specreduce.tilt_solution`` module with a ``TiltSolution`` class
+  that stores the fitted tilt model and provides bidirectional coordinate
+  transforms between detector and tilt-corrected frames,
+  flux-conserving 2D resampling, GWCS export via a ``gwcs`` property, and
+  reconstruction from a GWCS object via ``TiltSolution.from_gwcs()``.
+
+
 1.8.0 (2026-02-24)
 ------------------
 
