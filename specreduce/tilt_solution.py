@@ -67,34 +67,56 @@ class TiltSolution:
             provided here, it must be passed to `_calculate_inverse` directly.
         """
         self._shift: Model = solution[:2]
-        self._r2d: Model = solution
-        self._r2d_dxdx: None | Model = None
+        self._c2d: Model = solution
+        self._c2d_dxdx: None | Model = None
         self._image_shape = image_shape
         self.disp_axis = disp_axis
 
     @property
-    def cor2det(self):
+    def c2d(self):
         """Transformation from tilt-corrected to detector space along the dispersion axis."""
-        return self._r2d
+        return self._c2d
 
-    @cor2det.setter
-    def cor2det(self, value):
-        self._r2d = value
-        if "cor2det_derivative" in self.__dict__:
-            del self.cor2det_derivative
-        if "det2cor" in self.__dict__:
-            del self.det2cor
+    @c2d.setter
+    def c2d(self, value):
+        self._c2d = value
+        if "c2d_derivative" in self.__dict__:
+            del self.c2d_derivative
+        if "d2c" in self.__dict__:
+            del self.d2c
         if "gwcs" in self.__dict__:
             del self.gwcs
 
     @cached_property
-    def cor2det_derivative(self):
+    def c2d_derivative(self):
         """Dispersion-axis derivative of the tilt-corrected to detector space transformation."""
         self._calculate_derivative()
-        return self._r2d_dxdx
+        return self._c2d_dxdx
+
+    def _calculate_derivative(self):
+        """Calculate the derivative for the tilt-corrected space -> detector space transform."""
+        self._c2d_dxdx = self._shift | diff_poly2d_x(self._c2d[-1])
+
+    def corr_to_det(self, disp: ndarray, cdisp: ndarray) -> tuple[ndarray, ndarray]:
+        """Transform coordinates from the 2D tilt-corrected space to 2D detector space.
+
+        Parameters
+        ----------
+        disp
+            The dispersion-axis coordinates to be transformed.
+        cdisp
+            The cross-dispersion coordinates.
+
+        Returns
+        -------
+        tuple of (ndarray, ndarray)
+            A tuple containing the transformed dispersion-axis coordinates as the first element
+            and the original cross-dispersion-axis coordinates as the second element.
+        """
+        return self._c2d(disp, cdisp), cdisp
 
     @cached_property
-    def det2cor(self):
+    def d2c(self):
         """Transformation from detector to tilt-corrected space along the dispersion axis."""
         return self._calculate_inverse()
 
@@ -127,12 +149,12 @@ class TiltSolution:
             )
 
         ny, nx = image_shape
-        degree = degree or self._r2d[-1].degree + 3
+        degree = degree or self._c2d[-1].degree + 3
 
         disp_grid, cdisp_grid = np.meshgrid(np.linspace(0, nx, n_grid), np.linspace(0, ny, n_grid))
         disp_flat = disp_grid.ravel()
         cdisp_flat = cdisp_grid.ravel()
-        disp_det = self._r2d(disp_flat, cdisp_flat)
+        disp_det = self._c2d(disp_flat, cdisp_flat)
 
         # Fit a plain Polynomial2D on shifted coordinates, then compose with shifts
         ref_x = -self._shift.offset_0.value
@@ -143,7 +165,7 @@ class TiltSolution:
         poly_fit = fitter(poly_init, disp_det - ref_x, cdisp_flat - ref_y, disp_flat)
         return self._shift | poly_fit
 
-    def det_to_rec(self, disp: ndarray, cdisp: ndarray) -> tuple[ndarray, ndarray]:
+    def det_to_corr(self, disp: ndarray, cdisp: ndarray) -> tuple[ndarray, ndarray]:
         """Transform coordinates from 2D detector space to 2D tilt-corrected space.
 
         Parameters
@@ -159,13 +181,13 @@ class TiltSolution:
             A tuple containing the transformed dispersion-axis coordinates in
             tilt-corrected space and the original cross-dispersion coordinates.
         """
-        return self.det2cor(disp, cdisp), cdisp
+        return self.d2c(disp, cdisp), cdisp
 
     @cached_property
     def gwcs(self) -> gwcs.wcs.WCS:
-        """GWCS object defining the 2D rectified-to-detector coordinate mapping.
+        """GWCS object defining the 2D tilt-corrected-to-detector coordinate mapping.
 
-        The forward transform maps ``(disp_rectified, cdisp)`` to
+        The forward transform maps ``(disp_corrected, cdisp)`` to
         ``(disp_detector, cdisp)``, where the cross-dispersion coordinate
         passes through unchanged.
         """
@@ -185,39 +207,17 @@ class TiltSolution:
             unit=[u.pix, u.pix],
             name="detector",
         )
-        # self._r2d maps (disp, cdisp) -> disp_det (2 inputs, 1 output).
+        # self._c2d maps (disp, cdisp) -> disp_det (2 inputs, 1 output).
         # Build a 2D->2D transform: (disp, cdisp) -> (disp_det, cdisp).
-        full_transform = Mapping((0, 1, 1)) | (self._r2d & Identity(1))
+        full_transform = Mapping((0, 1, 1)) | (self._c2d & Identity(1))
 
         # Set inverse transform if image_shape is available
         if self._image_shape is not None:
-            inv_transform = Mapping((0, 1, 1)) | (self.det2cor & Identity(1))
+            inv_transform = Mapping((0, 1, 1)) | (self.d2c & Identity(1))
             full_transform.inverse = inv_transform
 
         pipeline = [(rectified_frame, full_transform), (detector_frame, None)]
         return gwcs.wcs.WCS(pipeline)
-
-    def _calculate_derivative(self):
-        """Calculate the derivative for the tilt-corrected space -> detector space transform."""
-        self._r2d_dxdx = self._shift | diff_poly2d_x(self._r2d[-1])
-
-    def rec_to_det(self, disp: ndarray, cdisp: ndarray) -> tuple[ndarray, ndarray]:
-        """Transform coordinates from the 2D tilt-corrected space to 2D detector space.
-
-        Parameters
-        ----------
-        disp
-            The dispersion-axis coordinates to be transformed.
-        cdisp
-            The cross-dispersion coordinates, returned as is.
-
-        Returns
-        -------
-        tuple of (ndarray, ndarray)
-            A tuple containing the transformed dispersion-axis coordinates as the first element
-            and the original cross-dispersion-axis coordinates as the second element.
-        """
-        return self._r2d(disp, cdisp), cdisp
 
     def resample(
         self,
@@ -293,7 +293,7 @@ class TiltSolution:
         l1, l2 = bounds if bounds is not None else (0, nx)
 
         bin_edges_rec = bin_edges if bin_edges is not None else np.linspace(l1, l2, num=nbins + 1)
-        bin_edges_det = np.clip(self._r2d(*np.meshgrid(bin_edges_rec, ypix)), 0, nx - 1e-12)
+        bin_edges_det = np.clip(self._c2d(*np.meshgrid(bin_edges_rec, ypix)), 0, nx - 1e-12)
         bin_edge_ix = np.floor(bin_edges_det).astype(int)
         bin_edge_w = bin_edges_det - bin_edge_ix
 
@@ -303,7 +303,7 @@ class TiltSolution:
         # Calculate the derivative of the tilt-corrected space -> detector space transformation  with
         # respect to the detector coordinate (dx_rec / dx_det). This is needed for flux
         # conservation, as it represents how the pixel width changes.
-        dtdx = self.cor2det_derivative(*np.meshgrid(np.arange(nx), np.arange(ny)))
+        dtdx = self.c2d_derivative(*np.meshgrid(np.arange(nx), np.arange(ny)))
 
         # Calculate a normalization factor 'n' for flux conservation. This factor accounts for the
         # change in pixel size due to the distortion, and ensures that the total flux in each row

@@ -128,7 +128,7 @@ class TiltCorrection:
             if disp_ref_pixel is None:
                 disp_ref_pixel = self.arc_frames[0].data.shape[disp_axis] // 2
 
-        self.ref_pixel = (cdisp_ref_pixel, disp_ref_pixel)   # Reference pixel (y, x)
+        self.ref_pixel = (cdisp_ref_pixel, disp_ref_pixel)  # Reference pixel (y, x)
         self._shift = models.Shift(-self.ref_pixel[1]) & models.Shift(-self.ref_pixel[0])
 
         # Calculate the cross-dispersion axis sample positions
@@ -137,9 +137,7 @@ class TiltCorrection:
             self.cd_samples = np.array(cdisp_samples)
         else:
             self.cd_samples = slims[0] + np.round(
-                np.arange(1, n_cdisp_samples + 1)
-                * (slims[1] - slims[0])
-                / (n_cdisp_samples + 1)
+                np.arange(1, n_cdisp_samples + 1) * (slims[1] - slims[0]) / (n_cdisp_samples + 1)
             ).astype(int)
         self.ncd = self.cd_samples.size
 
@@ -202,7 +200,9 @@ class TiltCorrection:
             for lx, ly in zip(self._samples_det_x, self._samples_det_y)
         ]
 
-    def fit(self, degree: int = 3, method: str = "Powell", max_distance: float = 10) -> TiltSolution:
+    def fit(
+        self, degree: int = 3, method: str = "Powell", max_distance: float = 10
+    ) -> TiltSolution:
         """Fit a 2D polynomial transformation from tilt-corrected space to detector space.
 
         The transformation is calculated by minimizing the sum of distances between transformed
@@ -279,8 +279,8 @@ class TiltCorrection:
         model = self._shift | models.Polynomial2D(
             degree,
             **{
-                n: getattr(self.solution.cor2det[-1], n).value
-                for n in self.solution.cor2det[-1].param_names
+                n: getattr(self.solution.c2d[-1], n).value
+                for n in self.solution.c2d[-1].param_names
             },
         )
         model.offset_0.fixed = True
@@ -289,7 +289,7 @@ class TiltCorrection:
             model.fixed[f"c{i}_0_2"] = True
 
         fitter = fitting.LMLSQFitter()
-        self.solution.cor2det = fitter(model, rx, ry, ox)
+        self.solution.c2d = fitter(model, rx, ry, ox)
 
     def match_lines(
         self, max_distance: float = 5, concatenate: bool = True
@@ -320,7 +320,7 @@ class TiltCorrection:
         matched_rec_x = []
         matched_rec_y = []
         for iframe, tree in enumerate(self._trees):
-            x_mapped = self.solution.cor2det(self._samples_rec_x[iframe], self._samples_rec_y[iframe])
+            x_mapped = self.solution.c2d(self._samples_rec_x[iframe], self._samples_rec_y[iframe])
             l, ix = tree.query(
                 np.array([x_mapped, self._samples_rec_y[iframe]]).T,
                 distance_upper_bound=max_distance,
@@ -387,12 +387,14 @@ class TiltCorrection:
             fig = ax.figure
 
         if disp_values is None:
-            disp_values = tile(np.linspace(0, self.arc_frames[0].data.shape[1], n_disp), (n_cdisp, 1))
+            disp_values = tile(
+                np.linspace(0, self.arc_frames[0].data.shape[1], n_disp), (n_cdisp, 1)
+            )
         else:
             n_disp = len(disp_values)
         rows = tile(np.linspace(0, self.arc_frames[0].data.shape[0], n_cdisp)[:, None], (1, n_disp))
 
-        ax.plot(self.solution.cor2det(disp_values, rows), rows, **largs)
+        ax.plot(self.solution.c2d(disp_values, rows), rows, **largs)
         return fig
 
     def plot_fit_quality(
@@ -428,7 +430,7 @@ class TiltCorrection:
 
         rxs, rys, dxs = self.match_lines(max_match_distance, concatenate=False)
         for i, (rx, ry, dx) in enumerate(zip(rxs, rys, dxs)):
-            residuals = dx - self.solution.rec_to_det(rx, ry)[0]
+            residuals = dx - self.solution.corr_to_det(rx, ry)[0]
             ax1.scatter(rx, ry, s=50 * abs(residuals), label=f"Arc {i+1}")
             ax2.plot(rx, residuals, ".")
             ax3.plot(residuals, ry, ".")

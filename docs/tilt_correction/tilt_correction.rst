@@ -1,7 +1,7 @@
 .. _tilt_correction:
 
-Tilt Correction
-===============
+2D Tilt Correction
+==================
 
 .. image::
    tilt_correction.png
@@ -45,26 +45,38 @@ Quickstart
 1. Initialization
 *****************
 
-You instantiate :class:`~specreduce.tilt_correction.TiltCorrection` by providing arc lamp
-calibration frames and a reference position along the cross-dispersion axis:
+You instantiate :class:`~specreduce.tilt_correction.TiltCorrection` by providing one or more arc
+lamp calibration frames and a :class:`~specreduce.tracing.Trace` object.
+The trace automatically sets the reference positions used to center the tilt model:
 
 .. code-block:: python
 
     from specreduce.tilt_correction import TiltCorrection
 
-    tc = TiltCorrection(arc_frames=arc_ndata,
-                        cdisp_ref_position=512)
+    tc = TiltCorrection(arc_frames=arc, trace=trace)
+
+
+Alternatively, you can specify the reference positions manually without a trace:
+
+.. code-block:: python
+
+    tc = TiltCorrection(arc_frames=arc, cdisp_ref_pixel=512, disp_ref_pixel=1024)
 
 Key parameters:
 
 *   **arc_frames**: One or more arc lamp frames as `~astropy.nddata.NDData` instances (or a
     sequence of them). Multiple arc frames are supported for combining different lamps.
 
-*   **cdisp_ref_position**: The reference pixel position along the cross-dispersion axis.
-    Should be close to the trace's average cross-dispersion position for best results.
+*   **trace**: A :class:`~specreduce.tracing.Trace` object representing the spectrum trace.
+    When provided, the reference pixel is derived automatically.
 
-*   **disp_ref_position**: The reference pixel position along the dispersion axis. Defaults
-    to the center of the frame if not provided.
+*   **cdisp_ref_pixel**: The reference pixel position along the cross-dispersion axis.
+    Should be close to the trace's average cross-dispersion position for best results.
+    Determined automatically if a ``trace`` is provided.
+
+*   **disp_ref_pixel**: The reference pixel position along the dispersion axis. Defaults
+    to the center of the frame if not provided. Determined automatically if a ``trace``
+    is provided.
 
 *   **n_cdisp_samples**: Number of cross-dispersion sample positions to generate (default 10).
     Arc lines are measured at each sample position to characterize how line centroids shift
@@ -81,14 +93,6 @@ Key parameters:
     ``"ignore"``, ``"propagate"``, ``"zero_fill"``, ``"nan_fill"``,
     ``"apply_mask_only"``, ``"apply_nan_only"``).
 
-You can also provide multiple arc frames:
-
-.. code-block:: python
-
-    tc = TiltCorrection(arc_frames=[arc_hgar, arc_ne],
-                        cdisp_ref_position=512,
-                        n_cdisp_samples=15,
-                        cdisp_sample_lims=(50, 950))
 
 2. Finding Arc Lines
 ********************
@@ -124,11 +128,11 @@ detector space using :meth:`~specreduce.tilt_correction.TiltCorrection.fit`:
 
 .. code-block:: python
 
-    tc.fit(degree=3, max_distance=10)
+    tc.fit(degree=4, max_distance=10)
 
 The fitting proceeds in two stages:
 
-1. **Initial optimization**: Uses ``scipy.optimize.minimize`` (default method: Powell) to
+1. **Initial optimization**: Uses `scipy.optimize.minimize` to
    minimize the sum of distances between the transformed sample positions and their nearest
    neighbors in detector space (via the KD-trees).
 2. **Least-squares refinement**: Automatically calls
@@ -157,8 +161,7 @@ Several diagnostic tools help assess the quality of the tilt solution:
 
 *   **Residual visualization**: Use
     :meth:`~specreduce.tilt_correction.TiltCorrection.plot_fit_quality` to see a 2D scatter
-    of matched lines (sized by residual magnitude) with 1D residual projections along both
-    axes:
+    of matched lines with 1D residual projections along both axes:
 
     .. code-block:: python
 
@@ -174,7 +177,7 @@ Several diagnostic tools help assess the quality of the tilt solution:
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
-        ax.imshow(arc_ndata.data, origin="lower", aspect="auto")
+        ax.imshow(arc.data, origin="lower", aspect="auto")
         tc.plot_wavelength_contours(ax=ax, ndisp=50)
 
 
@@ -194,8 +197,8 @@ flux-conserving resampling independently of the calibration workflow.
         ts = tc.solution
         det_x, det_y = ts.rec_to_det(disp=500, cdisp=300)
 
-*   **Underlying model**: The compound Astropy model (Shift & Shift | Polynomial2D) is
-    accessible via the :attr:`~specreduce.tilt_solution.TiltSolution.cor2det` property:
+*   **Underlying model**: The compound Astropy model is accessible via the
+    :attr:`~specreduce.tilt_solution.TiltSolution.cor2det` property:
 
     .. code-block:: python
 
@@ -203,7 +206,7 @@ flux-conserving resampling independently of the calibration workflow.
 
 *   **GWCS object**: Access the `~gwcs.wcs.WCS` object via the
     :attr:`~specreduce.tilt_solution.TiltSolution.gwcs` property. This represents
-    the full 2D rectified-to-detector coordinate mapping:
+    the full 2D-tilt-corrected-to-detector coordinate mapping:
 
     .. code-block:: python
 
@@ -234,15 +237,3 @@ flux-conserving resampling independently of the calibration workflow.
 
     The ``resample`` method accepts a ``mask_treatment`` parameter with the same options as
     the :class:`~specreduce.tilt_correction.TiltCorrection` constructor.
-
-
-Tutorials
----------
-
-The following tutorial provides a hands-on example demonstrating the usage of the
-:class:`~specreduce.tilt_correction.TiltCorrection` class with real OSIRIS data.
-
-.. toctree::
-   :maxdepth: 1
-
-   osiris_example.ipynb
