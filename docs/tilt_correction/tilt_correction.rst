@@ -108,7 +108,7 @@ sample position using
 
 This method:
 
-1. Identifies line centroids at the **reference row** (set by ``cdisp_ref_position``) —
+1. Identifies line centroids at the **reference row** (set by ``cdisp_ref_pixel``) —
    these define the "ideal" line positions.
 2. Identifies line centroids at each **cross-dispersion sample** position.
 3. Builds KD-trees from the sample positions for efficient nearest-neighbor matching
@@ -124,7 +124,7 @@ Parameters:
 3. Fitting the Tilt Model
 *************************
 
-Fit a 2D polynomial model that maps coordinates from the tilt-corrected (rectified) space to
+Fit a 2D polynomial model that maps coordinates from the tilt-corrected space to
 detector space using :meth:`~specreduce.tilt_correction.TiltCorrection.fit`:
 
 .. code-block:: python
@@ -179,7 +179,7 @@ Several diagnostic tools help assess the quality of the tilt solution:
 
         fig, ax = plt.subplots()
         ax.imshow(arc.data, origin="lower", aspect="auto")
-        tc.plot_wavelength_contours(ax=ax, ndisp=50)
+        tc.plot_wavelength_contours(ax=ax, n_disp=50)
 
 
 5. Using the Tilt Solution
@@ -212,16 +212,41 @@ flux-conserving resampling independently of the calibration workflow.
     .. code-block:: python
 
         wcs = ts.gwcs
-        det_x, det_y = wcs(disp_rect, cdisp)
+        det_x, det_y = wcs(disp_corr, cdisp)
+
+*   **Inverse coordinate transform**: Use
+    :meth:`~specreduce.tilt_solution.TiltSolution.det_to_corr` to convert coordinates from
+    detector space back to the tilt-corrected space:
+
+    .. code-block:: python
+
+        corr_x, corr_y = ts.det_to_corr(disp=500, cdisp=300)
+
+    The inverse model is accessible via the
+    :attr:`~specreduce.tilt_solution.TiltSolution.d2c` property:
+
+    .. code-block:: python
+
+        print(ts.d2c)
+
+*   **Reconstructing from GWCS**: Use
+    :meth:`~specreduce.tilt_solution.TiltSolution.from_gwcs` to reconstruct a
+    ``TiltSolution`` from a previously exported GWCS object:
+
+    .. code-block:: python
+
+        from specreduce.tilt_solution import TiltSolution
+
+        ts_restored = TiltSolution.from_gwcs(wcs, image_shape=(ny, nx))
 
 *   **Flux-conserving resampling**: Use
-    :meth:`~specreduce.tilt_solution.TiltSolution.resample` to rectify a 2D spectral
+    :meth:`~specreduce.tilt_solution.TiltSolution.resample` to tilt-correct a 2D spectral
     image. The resampling is exact and conserves flux as long as the tilt-corrected space
     covers the full detector extent:
 
     .. code-block:: python
 
-        rectified = ts.resample(science_frame)
+        corrected = ts.resample(science_frame)
 
     You can control the output grid:
 
