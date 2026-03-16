@@ -1,3 +1,4 @@
+import warnings
 from functools import cached_property
 from typing import Sequence, Literal
 
@@ -7,6 +8,7 @@ import numpy as np
 from astropy.modeling import models, fitting, Model
 from astropy.modeling.models import Identity, Mapping, Shift, Polynomial2D
 from astropy.nddata import NDData
+from astropy.utils.exceptions import AstropyUserWarning
 from gwcs import coordinate_frames
 from numpy import ndarray
 
@@ -163,7 +165,9 @@ class TiltSolution:
         ref_y = -self._shift.offset_1.value
         poly_init = models.Polynomial2D(degree, c0_0=ref_x, c1_0=1.0)
 
-        fitter = fitting.LinearLSQFitter()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=AstropyUserWarning)
+            fitter = fitting.LinearLSQFitter()
         poly_fit = fitter(poly_init, disp_det - ref_x, cdisp_flat - ref_y, disp_flat)
         self._d2c = self._shift | poly_fit
 
