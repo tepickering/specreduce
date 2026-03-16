@@ -290,6 +290,7 @@ class TiltSolution:
              - ``apply_nan_only``: The  image is left unmodified, the old mask is dropped,
              and a new mask is created based on non-finite values.
 
+
         Returns
         -------
         NDData
