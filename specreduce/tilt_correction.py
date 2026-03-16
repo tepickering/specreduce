@@ -365,7 +365,7 @@ class TiltCorrection:
             are created.
         figsize
             Tuple specifying the size of the figure to create, applicable only if
-            `ax` is None.
+            ``ax`` is None.
         line_args
             A dictionary of line properties (e.g., color, linewidth, linestyle).
             These properties modify the default styling provided for grid lines.
@@ -375,7 +375,7 @@ class TiltCorrection:
         -------
         figure : matplotlib.figure.Figure
             The Matplotlib figure containing the plot. If an Axes instance is passed
-            to `ax`, the associated figure is returned.
+            to ``ax``, the associated figure is returned.
         """
         largs = {"c": "k", "lw": 0.5, "alpha": 0.5, "ls": "--"}
         if line_args is not None:

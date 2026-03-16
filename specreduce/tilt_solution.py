@@ -265,7 +265,7 @@ class TiltSolution:
             should be the same as in the arc frames.
         nbins
             Number of bins in the tilt-corrected space. If None, the number of bins will be set
-            to the number of columns in the `flux` input image.
+            to the number of columns in the ``flux`` input image.
         bounds
             Tuple specifying the start and end coordinates for the tilt-corrected space along the
             x-axis. If None, the bounds default to (0, number of columns in ``flux``).
