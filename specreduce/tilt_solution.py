@@ -69,6 +69,7 @@ class TiltSolution:
         self._shift: Model = solution[:2]
         self._c2d: Model = solution
         self._c2d_dxdx: None | Model = None
+        self._d2c: None | Model = None
         self._image_shape = image_shape
         self.disp_axis = disp_axis
 
@@ -118,11 +119,12 @@ class TiltSolution:
     @cached_property
     def d2c(self):
         """Transformation from detector to tilt-corrected space along the dispersion axis."""
-        return self._calculate_inverse()
+        self._calculate_inverse()
+        return self._d2c
 
     def _calculate_inverse(
         self, image_shape: tuple[int, int] | None = None, degree: int = None, n_grid: int = 50
-    ):
+    ) -> None:
         """Compute the numerical inverse of the forward tilt transform.
 
         Evaluates the forward transform on a regular grid in rectified space,
@@ -149,7 +151,7 @@ class TiltSolution:
             )
 
         ny, nx = image_shape
-        degree = degree or self._c2d[-1].degree + 3
+        degree = degree or self._c2d[-1].degree + 1
 
         disp_grid, cdisp_grid = np.meshgrid(np.linspace(0, nx, n_grid), np.linspace(0, ny, n_grid))
         disp_flat = disp_grid.ravel()
@@ -163,7 +165,7 @@ class TiltSolution:
 
         fitter = fitting.LinearLSQFitter()
         poly_fit = fitter(poly_init, disp_det - ref_x, cdisp_flat - ref_y, disp_flat)
-        return self._shift | poly_fit
+        self._d2c = self._shift | poly_fit
 
     def det_to_corr(self, disp: ndarray, cdisp: ndarray) -> tuple[ndarray, ndarray]:
         """Transform coordinates from 2D detector space to 2D tilt-corrected space.
