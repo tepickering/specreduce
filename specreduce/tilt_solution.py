@@ -168,7 +168,7 @@ class TiltSolution:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=AstropyUserWarning)
             fitter = fitting.LinearLSQFitter()
-        poly_fit = fitter(poly_init, disp_det - ref_x, cdisp_flat - ref_y, disp_flat)
+            poly_fit = fitter(poly_init, disp_det - ref_x, cdisp_flat - ref_y, disp_flat)
         self._d2c = self._shift | poly_fit
 
     def det_to_corr(self, disp: ndarray, cdisp: ndarray) -> tuple[ndarray, ndarray]:
