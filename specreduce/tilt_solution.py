@@ -231,7 +231,9 @@ class TiltSolution:
     ):
         """Create a TiltSolution from a GWCS object."""
         m = wcs.forward_transform
-        if not (isinstance(m[1], Shift) & isinstance(m[2], Shift) & isinstance(m[3], Polynomial2D)):
+        if not (
+            isinstance(m[1], Shift) and isinstance(m[2], Shift) and isinstance(m[3], Polynomial2D)
+        ):
             raise ValueError("The GWCS object must contain a 2D polynomial transformation.")
         return TiltSolution(m[1:-1], disp_axis=disp_axis, image_shape=image_shape)
 

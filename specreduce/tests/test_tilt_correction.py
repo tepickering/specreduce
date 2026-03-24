@@ -49,7 +49,7 @@ def mk_arc_frames():
 
 
 @pytest.fixture
-def mk_defaul_tc(mk_arc_frames):
+def mk_default_tc(mk_arc_frames):
     tc = TiltCorrection(
         arc_frames=mk_arc_frames,
         cdisp_ref_pixel=64,
@@ -85,43 +85,52 @@ def test_init_default_params(mk_arc_frames):
     tc = TiltCorrection(arcs, cdisp_ref_pixel=64)
     assert tc.ref_pixel == (64, arcs[0].shape[1] // 2)
 
+    tc = TiltCorrection(arcs[0], cdisp_ref_pixel=64)
+    assert tc.ref_pixel == (64, arcs[0].shape[1] // 2)
 
-def test_find_lines(mk_defaul_tc):
-    tc = mk_defaul_tc
+    with pytest.raises(ValueError, match="cdisp_ref_position must be provided"):
+        TiltCorrection(arcs)
+
+    tc = TiltCorrection(arcs[0], cdisp_ref_pixel=64, cdisp_samples=[10, 20, 30, 40, 50])
+    np.testing.assert_array_equal(tc.cd_samples, np.array([10, 20, 30, 40, 50]))
+
+
+def test_find_lines(mk_default_tc):
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     np.testing.assert_array_equal(tc.cd_samples, np.array([14, 28, 43, 57, 71, 85, 100, 114]))
 
 
-def test_fit(mk_defaul_tc):
-    tc = mk_defaul_tc
+def test_fit(mk_default_tc):
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
 
 
-def test_plot_fit_quality(mk_defaul_tc):
-    tc = mk_defaul_tc
+def test_plot_fit_quality(mk_default_tc):
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     tc.plot_fit_quality()
 
 
-def test_plot_wavelength_contours(mk_defaul_tc):
-    tc = mk_defaul_tc
+def test_plot_wavelength_contours(mk_default_tc):
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     tc.plot_wavelength_contours()
 
 
-def test_resample(mk_defaul_tc, mk_arc_frames):
+def test_resample(mk_default_tc, mk_arc_frames):
     arcs = mk_arc_frames
-    tc = mk_defaul_tc
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     tc.solution.resample(arcs[0])
 
 
-def test_tilt_solution_gwcs(mk_defaul_tc):
-    tc = mk_defaul_tc
+def test_tilt_solution_gwcs(mk_default_tc):
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
@@ -143,8 +152,8 @@ def test_tilt_solution_gwcs(mk_defaul_tc):
     np.testing.assert_allclose(det_y_gwcs, cdisp_arr)
 
 
-def test_tilt_solution_gwcs_cache_invalidation(mk_defaul_tc):
-    tc = mk_defaul_tc
+def test_tilt_solution_gwcs_cache_invalidation(mk_default_tc):
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
@@ -158,8 +167,8 @@ def test_tilt_solution_gwcs_cache_invalidation(mk_defaul_tc):
     assert "gwcs" not in ts.__dict__
 
 
-def test_det_to_corr_round_trip(mk_defaul_tc):
-    tc = mk_defaul_tc
+def test_det_to_corr_round_trip(mk_default_tc):
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
@@ -175,8 +184,8 @@ def test_det_to_corr_round_trip(mk_defaul_tc):
     np.testing.assert_allclose(cdisp_out2, cdisp)
 
 
-def test_d2c_cache_invalidation(mk_defaul_tc):
-    tc = mk_defaul_tc
+def test_d2c_cache_invalidation(mk_default_tc):
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
@@ -190,8 +199,8 @@ def test_d2c_cache_invalidation(mk_defaul_tc):
     assert "d2c" not in ts.__dict__
 
 
-def test_gwcs_inverse(mk_defaul_tc):
-    tc = mk_defaul_tc
+def test_gwcs_inverse(mk_default_tc):
+    tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     ts = tc.solution
