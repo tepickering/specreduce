@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from astropy.modeling import models
@@ -218,3 +219,40 @@ def test_gwcs_inverse(mk_default_tc):
     disp_rec_direct, cdisp_direct = ts.det_to_corr(disp_det, cdisp_det)
     np.testing.assert_allclose(disp_cor_inv, disp_rec_direct)
     np.testing.assert_allclose(cdisp_cor_inv, cdisp_direct)
+
+
+def test_refine_fit_before_fit(mk_default_tc):
+    tc = mk_default_tc
+    tc.find_arc_lines(3.0, 5.0)
+    with pytest.raises(ValueError, match="solution must be calculated"):
+        tc.refine_fit()
+
+
+def test_match_lines_before_fit(mk_default_tc):
+    tc = mk_default_tc
+    tc.find_arc_lines(3.0, 5.0)
+    with pytest.raises(ValueError, match="solution must be calculated"):
+        tc.match_lines()
+
+
+def test_plot_wavelength_contours_options(mk_default_tc):
+    tc = mk_default_tc
+    tc.find_arc_lines(3.0, 5.0)
+    tc.fit(4)
+
+    # Test with line_args and a pre-created ax
+    fig, ax = plt.subplots()
+    tc.plot_wavelength_contours(ax=ax, line_args={"c": "red"})
+
+    # Test with explicit disp_values
+    disp_values = np.array([50.0, 100.0, 200.0, 300.0, 400.0])
+    tc.plot_wavelength_contours(disp_values=disp_values)
+    plt.close("all")
+
+
+def test_plot_fit_quality_with_rlim(mk_default_tc):
+    tc = mk_default_tc
+    tc.find_arc_lines(3.0, 5.0)
+    tc.fit(4)
+    tc.plot_fit_quality(rlim=(-1, 1))
+    plt.close("all")
