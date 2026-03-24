@@ -1,7 +1,8 @@
 import numpy as np
+import pytest
 from astropy.modeling import models
 
-from specreduce.tilt_solution import diff_poly2d_x
+from specreduce.tilt_solution import TiltSolution, diff_poly2d_x
 
 
 def test_diff_poly2d_x_valid_derivative():
@@ -110,3 +111,88 @@ def test_resample(mk_default_tc, mk_arc_frames):
     tc.find_arc_lines(3.0, 5.0)
     tc.fit(4)
     tc.solution.resample(arcs[0])
+
+
+def test_c2d_derivative_cache_invalidation(mk_default_tc):
+    tc = mk_default_tc
+    tc.find_arc_lines(3.0, 5.0)
+    tc.fit(4)
+    ts = tc.solution
+
+    # Access c2d_derivative to populate the cache
+    _ = ts.c2d_derivative
+    assert "c2d_derivative" in ts.__dict__
+
+    # Setting c2d should invalidate the c2d_derivative cache
+    ts.c2d = ts.c2d
+    assert "c2d_derivative" not in ts.__dict__
+
+
+def test_inverse_without_image_shape(mk_default_tc):
+    tc = mk_default_tc
+    tc.find_arc_lines(3.0, 5.0)
+    tc.fit(4)
+    ts = tc.solution
+
+    # Create a TiltSolution without image_shape
+    ts_no_shape = TiltSolution(ts.c2d, image_shape=None)
+    with pytest.raises(TypeError, match="image_shape must be provided"):
+        _ = ts_no_shape.d2c
+
+
+def test_from_gwcs(mk_default_tc):
+    tc = mk_default_tc
+    tc.find_arc_lines(3.0, 5.0)
+    tc.fit(4)
+    ts = tc.solution
+
+    # Round-trip through GWCS
+    ts2 = TiltSolution.from_gwcs(ts.gwcs, image_shape=(128, 512))
+
+    disp_arr = np.array([100.0, 200.0, 300.0])
+    cdisp_arr = np.array([30.0, 60.0, 90.0])
+    np.testing.assert_allclose(
+        ts2.corr_to_det(disp_arr, cdisp_arr)[0],
+        ts.corr_to_det(disp_arr, cdisp_arr)[0],
+    )
+
+
+def test_from_gwcs_invalid():
+    import gwcs
+    from gwcs import coordinate_frames
+    import astropy.units as u
+    from astropy.modeling.models import Shift, Polynomial1D
+
+    frame_in = coordinate_frames.CoordinateFrame(
+        2, ("PIXEL", "PIXEL"), (0, 1),
+        axes_names=("x", "y"), unit=[u.pix, u.pix], name="in",
+    )
+    frame_out = coordinate_frames.CoordinateFrame(
+        2, ("PIXEL", "PIXEL"), (0, 1),
+        axes_names=("x", "y"), unit=[u.pix, u.pix], name="out",
+    )
+    # A GWCS with Shifts but a Polynomial1D instead of Polynomial2D
+    transform = Shift(0) | Shift(0) | Shift(0) | Polynomial1D(1)
+    wcs = gwcs.wcs.WCS([(frame_in, transform), (frame_out, None)])
+    with pytest.raises(ValueError, match="2D polynomial transformation"):
+        TiltSolution.from_gwcs(wcs)
+
+
+def test_resample_disp_axis_0(mk_default_tc, mk_arc_frames):
+    arcs = mk_arc_frames
+    tc = mk_default_tc
+    tc.find_arc_lines(3.0, 5.0)
+    tc.fit(4)
+
+    # Use a square crop so _parse_image works with disp_axis=0
+    from astropy.nddata import NDData
+    import astropy.units as u
+    ny = arcs[0].data.shape[0]
+    square = NDData(arcs[0].data[:, :ny] * u.ct)
+
+    ts = tc.solution
+    ts.disp_axis = 0
+    result = ts.resample(square, nbins=ny)
+    # With disp_axis=0, output should be transposed
+    assert result.data.shape[0] == ny  # nbins along axis 0
+    assert result.data.shape[1] == ny  # cdisp along axis 1
