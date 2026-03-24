@@ -24,8 +24,8 @@ with emphasis on long-slit spectroscopy and the specreduce package.
    Airmass
       The path length of light through Earth's atmosphere, expressed as a ratio
       relative to the path length at zenith. In the plane-parallel approximation,
-      airmass = sec(z), where z is the zenith angle. At zenith, airmass = 1.0; at 60°
-      from zenith, airmass ≈ 2.0. Airmass affects the amount of
+      airmass = sec(z), where z is the zenith angle. At zenith, airmass = 1.0; at
+      60\ :math:`^\circ` from zenith, airmass :math:`\approx` 2.0. Airmass affects the amount of
       :term:`atmospheric extinction` and is used in :term:`flux calibration`.
 
    Aperture
@@ -155,7 +155,7 @@ with emphasis on long-slit spectroscopy and the specreduce package.
 
    Dispersion
       The separation of light by wavelength, or quantitatively, the change in
-      wavelength per pixel (dλ/dpixel) along the :term:`dispersion axis`. A
+      wavelength per pixel (:math:`d\lambda/d\text{pixel}`) along the :term:`dispersion axis`. A
       spectrograph with higher dispersion spreads the spectrum over more
       pixels, providing higher :term:`spectral resolution`. Not to be confused
       with :term:`resolving power`.
@@ -199,7 +199,7 @@ with emphasis on long-slit spectroscopy and the specreduce package.
 
    Flux
       In the strict physical sense, energy per unit time per unit area
-      (W/m²). In spectroscopy, "flux" is often used informally to refer to
+      (:math:`\text{W/m}^2`). In spectroscopy, "flux" is often used informally to refer to
       :term:`flux density` or simply to the dependent variable (brightness)
       of a spectrum. The specutils `~specutils.Spectrum` class uses ``flux`` as the
       attribute name for the spectral data values.
@@ -207,14 +207,14 @@ with emphasis on long-slit spectroscopy and the specreduce package.
    Flux Calibration
       The process of converting spectral data from instrumental units
       (counts, ADU, electrons) to physical flux density units
-      (e.g., erg/s/cm²/Å or W/m²/nm). Flux calibration requires observations
+      (e.g., :math:`\text{erg/s/cm}^2\text{/\AA}` or :math:`\text{W/m}^2\text{/nm}`). Flux calibration requires observations
       of :term:`standard stars <standard star>` with known spectra and
       corrections for :term:`atmospheric extinction`.
 
    Flux Density
       Flux per unit wavelength or frequency interval, the standard physical
       quantity for spectroscopic measurements. Common units include
-      erg/s/cm²/Å, W/m²/nm, and Jy (jansky). See also :term:`flux`.
+      :math:`\text{erg/s/cm}^2\text{/\AA}`, :math:`\text{W/m}^2\text{/nm}`, and Jy (jansky). See also :term:`flux`.
 
    FWHM
       Full Width at Half Maximum. A measure of the width of a peak or line
@@ -357,7 +357,6 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       motion of the source (Doppler shift) or the expansion of the universe
       (cosmological redshift), defined as
       :math:`z = (\lambda_\text{observed} - \lambda_\text{rest}) / \lambda_\text{rest}`.
-      Redshift determination is a common goal of spectroscopic :term:`analysis`.
 
    Reduction
       The process of converting raw observational data into calibrated,
@@ -444,8 +443,9 @@ with emphasis on long-slit spectroscopy and the specreduce package.
    Spectral Resolution
       The ability to distinguish spectral features at nearby wavelengths,
       often characterized by the :term:`FWHM` of unresolved lines. Can be
-      expressed as the resolution element Δλ or as :term:`resolving power`
-      R = λ/Δλ. Higher spectral resolution reveals finer detail in spectra.
+      expressed as the resolution element :math:`\Delta\lambda` or as
+      :term:`resolving power` :math:`R = \lambda/\Delta\lambda`. Higher
+      spectral resolution reveals finer detail in spectra.
 
    Spectrum
       The distribution of light intensity as a function of wavelength or
@@ -468,10 +468,22 @@ with emphasis on long-slit spectroscopy and the specreduce package.
 
    Telluric Correction
       The removal of absorption features caused by molecules in Earth's
-      atmosphere (telluric features), such as O₂, H₂O, and CO₂ bands.
+      atmosphere (telluric features), such as :math:`\text{O}_2`,
+      :math:`\text{H}_2\text{O}`, and :math:`\text{CO}_2` bands.
       Telluric correction addresses the multiplicative effect of atmospheric
       absorption, distinct from the additive :term:`sky` emission. Methods
       include division by telluric standard star spectra or model fitting.
+
+   Tilt Correction
+      The process of correcting geometric distortions in a :term:`2D spectrum`
+      where lines of constant wavelength are not aligned with detector columns
+      (or rows). These distortions arise from :term:`slit curvature` and optical
+      aberrations in the spectrograph, causing :term:`emission lines <emission
+      line>` to appear tilted or curved across the :term:`cross-dispersion axis`.
+      Tilt correction fits a 2D polynomial transformation between tilt-corrected and
+      detector coordinate spaces using :term:`arc spectra <arc spectrum>`. In
+      specreduce, this is handled by ``TiltCorrection`` (calibration) and
+      ``TiltSolution`` (transformation and resampling).
 
    Trace
       The path of a spectrum across the :term:`2D spectrum` image, defining
