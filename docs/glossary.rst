@@ -25,8 +25,9 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       The path length of light through Earth's atmosphere, expressed as a ratio
       relative to the path length at zenith. In the plane-parallel approximation,
       airmass = sec(z), where z is the zenith angle. At zenith, airmass = 1.0; at
-      60\ :math:`^\circ` from zenith, airmass :math:`\approx` 2.0. Airmass affects the amount of
-      :term:`atmospheric extinction` and is used in :term:`flux calibration`.
+      60\ :math:`^\circ` from zenith, airmass :math:`\approx` 2.0. Airmass affects
+      the amount of :term:`atmospheric extinction` and is used in :term:`flux
+      calibration`.
 
    Aperture
       A defined region on a 2D spectral image from which flux is extracted. In
@@ -97,7 +98,8 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       :term:`aperture` with equal weights. Boxcar extraction is straightforward
       but does not account for the :term:`spatial profile` shape or
       pixel-to-pixel variations in noise. In specreduce, this is implemented
-      by the `~specreduce.extract.BoxcarExtract` class. Compare with :term:`optimal extraction`.
+      by the `~specreduce.extract.BoxcarExtract` class. Compare with
+      :term:`optimal extraction`.
 
    Calibrated 2D Image
       A :term:`2D spectrum` that has been processed to have a
@@ -155,10 +157,10 @@ with emphasis on long-slit spectroscopy and the specreduce package.
 
    Dispersion
       The separation of light by wavelength, or quantitatively, the change in
-      wavelength per pixel (:math:`d\lambda/d\text{pixel}`) along the :term:`dispersion axis`. A
-      spectrograph with higher dispersion spreads the spectrum over more
-      pixels, providing higher :term:`spectral resolution`. Not to be confused
-      with :term:`resolving power`.
+      wavelength per pixel (:math:`d\lambda/d\text{pixel}`) along the
+      :term:`dispersion axis`. A spectrograph with higher dispersion spreads the
+      spectrum over more pixels, providing higher :term:`spectral resolution`.
+      Not to be confused with :term:`resolving power`.
 
    Dispersion Axis
       The axis along which wavelength varies in a :term:`2D spectrum`. Light at
@@ -182,8 +184,8 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       by summing or averaging flux along the :term:`cross-dispersion axis`
       within a defined :term:`aperture`. In specreduce, the two main extraction
       methods are :term:`boxcar extraction` and :term:`optimal extraction`,
-      performed by the `~specreduce.extract.BoxcarExtract` and `~specreduce.extract.HorneExtract`
-      classes, respectively.
+      performed by the `~specreduce.extract.BoxcarExtract` and
+      `~specreduce.extract.HorneExtract` classes, respectively.
 
    FITS
       Flexible Image Transport System. The standard file format for
@@ -199,22 +201,23 @@ with emphasis on long-slit spectroscopy and the specreduce package.
 
    Flux
       In the strict physical sense, energy per unit time per unit area
-      (:math:`\text{W/m}^2`). In spectroscopy, "flux" is often used informally to refer to
-      :term:`flux density` or simply to the dependent variable (brightness)
+      (:math:`\text{W/m}^2`). In spectroscopy, "flux" is often used informally to refer
+      to :term:`flux density` or simply to the dependent variable (brightness)
       of a spectrum. The specutils `~specutils.Spectrum` class uses ``flux`` as the
       attribute name for the spectral data values.
 
    Flux Calibration
       The process of converting spectral data from instrumental units
       (counts, ADU, electrons) to physical flux density units
-      (e.g., :math:`\text{erg/s/cm}^2\text{/\AA}` or :math:`\text{W/m}^2\text{/nm}`). Flux calibration requires observations
-      of :term:`standard stars <standard star>` with known spectra and
-      corrections for :term:`atmospheric extinction`.
+      (e.g., :math:`\text{erg/s/cm}^2\text{/\AA}` or :math:`\text{W/m}^2\text{/nm}`).
+      Flux calibration requires observations of :term:`standard stars <standard star>`
+      with known spectra and corrections for :term:`atmospheric extinction`.
 
    Flux Density
       Flux per unit wavelength or frequency interval, the standard physical
       quantity for spectroscopic measurements. Common units include
-      :math:`\text{erg/s/cm}^2\text{/\AA}`, :math:`\text{W/m}^2\text{/nm}`, and Jy (jansky). See also :term:`flux`.
+      :math:`\text{erg/s/cm}^2\text{/\AA}`, :math:`\text{W/m}^2\text{/nm}`,
+      and Jy (jansky). See also :term:`flux`.
 
    FWHM
       Full Width at Half Maximum. A measure of the width of a peak or line
@@ -252,8 +255,8 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       In :term:`optimal extraction`, an empirical :term:`spatial profile`
       constructed by sampling the actual profile at multiple wavelength bins
       and interpolating between them. This accounts for wavelength-dependent
-      variations in the profile shape. In specreduce's `~specreduce.extract.HorneExtract`, this
-      is enabled with the ``interpolated_profile`` option.
+      variations in the profile shape. In specreduce's `~specreduce.extract.HorneExtract`,
+      this is enabled with the ``interpolated_profile`` option.
 
    Inverse Variance Weighting
       A statistical method for combining measurements that weights each value
