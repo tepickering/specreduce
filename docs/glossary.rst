@@ -16,10 +16,20 @@ with emphasis on long-slit spectroscopy and the specreduce package.
 
    2D Spectrum
       A two-dimensional image from a CCD or similar detector containing dispersed
-      light from one or more sources. One axis corresponds to wavelength (the
+      light from one :term:`or more sources <MOS>`. One axis corresponds to wavelength (the
       :term:`dispersion axis`) and the other to spatial position along the slit
-      (the :term:`cross-dispersion axis`). Also called a spectral image. This is
-      the input to the extraction process that produces a :term:`1D spectrum`.
+      (the :term:`cross-dispersion axis`). Also called a spectral image. A 2D spectrum is
+      the input to the extraction process that produces a :term:`1D spectrum` , and
+      is the starting point for reduction in both :term:`long-slit spectroscopy` and
+      :term:`fiber-fed spectroscopy`.
+
+   Absorption Line
+      A feature in a spectrum where flux falls below the local continuum level
+      at a characteristic wavelength, produced when atoms or molecules absorb
+      photons at specific energies. Absorption lines in stellar spectra
+      reveal the composition and physical conditions of stellar atmospheres,
+      while interstellar and :term:`telluric <telluric correction>` absorption
+      lines trace intervening material along the line of sight.
 
    Airmass
       The path length of light through Earth's atmosphere, expressed as a ratio
@@ -152,8 +162,8 @@ with emphasis on long-slit spectroscopy and the specreduce package.
    Data Cube
       A three-dimensional data structure with two spatial dimensions and one
       spectral dimension. Data cubes are the standard output format for
-      :term:`IFU` observations, where each spatial pixel contains a complete
-      spectrum. Also called a spectral data cube or hyperspectral cube.
+      :term:`IFU` observations, where each :term:`spatial pixel (spaxel) <spaxel>`
+      contains a complete spectrum. Also called a spectral data cube or hyperspectral cube.
 
    Dispersion
       The separation of light by wavelength, or quantitatively, the change in
@@ -167,11 +177,14 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       different wavelengths falls on different positions along this axis.
 
    Emission Line
-      A bright, narrow feature in a spectrum at a specific wavelength,
-      produced when atoms or molecules emit photons at characteristic
-      energies. Emission lines from :term:`arc lamps <arc lamp>` are used for
-      :term:`wavelength calibration`; emission lines from astronomical sources
-      provide information about their physical conditions and composition.
+      A feature in a spectrum where flux exceeds the local continuum level at
+      a characteristic wavelength, produced when atoms or molecules emit
+      photons at specific energies. Emission lines range from spectrally
+      unresolved features in arc lamps to broad features in active galactic nuclei.
+      Emission lines from :term:`arc lamps <arc lamp>` are used for :term:`wavelength
+      calibration`; emission lines from astronomical sources provide
+      information about their physical conditions, composition, and
+      kinematics.
 
    Extinction Curve
       The wavelength-dependent function describing :term:`atmospheric extinction`.
@@ -187,8 +200,16 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       performed by the `~specreduce.extract.BoxcarExtract` and
       `~specreduce.extract.HorneExtract` classes, respectively.
 
+   Fiber-Fed Spectroscopy
+      A spectroscopic technique in which optical fibers relay light from the
+      telescope focal plane to the spectrograph. Fibers decouple the
+      spectrograph from the telescope, allowing it to be mounted in a stable
+      environment, and enable flexible positioning of inputs across the focal
+      plane. Fiber-fed designs are used in :term:`MOS` instruments and :term:`IFU`
+      instruments, where each fiber produces a :term:`2D spectrum` on the detector.
+
    FITS
-      Flexible Image Transport System. The standard file format for
+      Flexible Image Transport System. A common file format for
       astronomical data, capable of storing images, tables, and metadata
       (headers). Most spectroscopic data, including raw and reduced spectra,
       are stored in FITS format.
@@ -221,9 +242,11 @@ with emphasis on long-slit spectroscopy and the specreduce package.
 
    FWHM
       Full Width at Half Maximum. A measure of the width of a peak or line
-      profile, defined as the width at which the intensity drops to half its
-      maximum value. FWHM is commonly used to characterize :term:`spectral
-      resolution` and the :term:`spatial profile` of sources.
+      profile, defined as the width at which the intensity drops (for
+      :term:`emission lines <emission line>`) or rises (for :term:`absorption
+      lines <absorption line>`) to half its extreme value relative to the local
+      continuum. FWHM is commonly used to characterize :term:`spectral resolution`
+      and the :term:`spatial profile` of sources.
 
    Gaussian Profile
       A bell-shaped curve (normal distribution) often used to model spectral
@@ -232,10 +255,10 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       determining the trace position.
 
    GWCS
-      Generalized World Coordinate System. A Python package providing a
-      framework for coordinate transformations, including non-linear mappings.
-      In specreduce, GWCS is used to represent :term:`wavelength solutions
-      <wavelength solution>` produced by wavelength calibration.
+      `Generalized World Coordinate System <https://gwcs.readthedocs.io/en/latest/>`_.
+      A Python package providing a framework for coordinate transformations, including
+      non-linear mappings. In specreduce, GWCS is used to represent :term:`wavelength
+      solutions <wavelength solution>` produced by wavelength calibration.
 
    Heliocentric Correction
       A velocity correction that accounts for Earth's motion relative to the
@@ -353,7 +376,7 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       A spectrum that has been resampled so that the :term:`dispersion axis`
       is aligned with image rows or columns, with constant wavelength spacing.
       Rectification involves :term:`resampling`. A rectified
-      ND spectrum has one axis that is purely spectral.
+      2D spectrum has one axis that is purely spectral.
 
    Redshift
       The fractional change in wavelength of spectral features due to the
@@ -442,6 +465,13 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       approximated as a Gaussian. In :term:`optimal extraction`, accurate
       modeling of the spatial profile is essential for maximizing
       signal-to-noise.
+
+   Spaxel
+      A spatial pixel in a :term:`data cube`, corresponding to a single
+      spatial element of an :term:`IFU` observation. Each spaxel contains a
+      complete spectrum spanning the spectral axis of the data cube. The
+      spatial sampling of a spaxel is determined by the IFU design and may not
+      be square.
 
    Spectral Resolution
       The ability to distinguish spectral features at nearby wavelengths,
