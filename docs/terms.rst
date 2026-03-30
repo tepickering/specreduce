@@ -10,6 +10,11 @@ when discussing spectroscopy data and its reduction and analysis.  The
 following is a living document that stemmed from that original
 discussion.
 
+.. deprecated:: 1.9
+
+   This document is deprecated and will be removed in a future release.
+   Please refer to the :doc:`glossary` for up-to-date terminology.
+
 .. note::
 
     Below, relative terms that can have multiple meanings are
