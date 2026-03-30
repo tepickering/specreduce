@@ -99,3 +99,4 @@ that benefits the entire astrophysics community. Thank you for being part of it!
     :hidden:
 
     process/index
+    terms
