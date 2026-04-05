@@ -267,7 +267,7 @@ with emphasis on long-slit spectroscopy and the specreduce package.
       :term:`barycentric correction`, which provides higher precision.
 
    IFU
-      `Integral Field Unit <https://en.wikipedia.org/wiki/Integral_field_spectrograph>`__.
+      `Integral Field Unit <https://en.wikipedia.org/wiki/Integral_field_spectrograph>`_.
       An instrument or observing mode that obtains
       spectra simultaneously over a contiguous two-dimensional field of view,
       producing a :term:`data cube`. IFUs use techniques such as fiber
@@ -482,7 +482,7 @@ with emphasis on long-slit spectroscopy and the specreduce package.
 
    Spectrum
       The distribution of light intensity as a function of wavelength or
-      frequency. In specreduce and specutils, ``Spectrum`` specifically
+      frequency. In specreduce and specutils, `~specutils.Spectrum` specifically
       refers to the specutils class representing spectral data with flux,
       spectral axis, and optional uncertainty and mask.
 
