@@ -30,3 +30,9 @@ API Reference
 .. automodapi:: specreduce.calibration_data
     :no-inheritance-diagram:
     :include-all-objects:
+
+.. automodapi:: specreduce.tilt_correction
+    :no-inheritance-diagram:
+
+.. automodapi:: specreduce.tilt_solution
+    :no-inheritance-diagram:

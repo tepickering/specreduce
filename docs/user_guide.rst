@@ -9,6 +9,7 @@ User Guide
     background
     extraction
     wavelength_calibration/wavelength_calibration
+    tilt_correction/tilt_correction
 
 
 .. toctree::
