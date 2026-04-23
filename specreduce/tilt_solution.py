@@ -137,7 +137,7 @@ class TiltSolution:
         image_shape
             The detector image shape ``(ny, nx)``. Falls back to ``self._image_shape``.
         degree
-            Degree of the inverse polynomial. Defaults to the forward polynomial degree + 3.
+            Degree of the inverse polynomial. Defaults to the forward polynomial degree + 1.
         n_grid
             Number of grid points per axis for the fitting grid.
 
