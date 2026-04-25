@@ -10,6 +10,11 @@ when discussing spectroscopy data and its reduction and analysis.  The
 following is a living document that stemmed from that original
 discussion.
 
+.. deprecated:: 1.9
+
+   This document is deprecated and will be removed in a future release.
+   Please refer to the :doc:`glossary` for up-to-date terminology.
+
 .. note::
 
     Below, relative terms that can have multiple meanings are
@@ -26,8 +31,8 @@ discussion.
 - Refers to e.g. the 2D CCD images (optionally pre-processed) from which
   1D spectra (flux vs. wavelength) are extracted
 
-.. KBW: I missed this discussion, so I don't know how we want to capture
-   "Alt" definitions here...  Seems a bit awkward.
+.. KBW: I missed this discussion, so I don't know how we want to capture "Alt" definitions here..
+   Seems a bit awkward.
 
 Alt Spectrum 2D
 ===============
@@ -71,8 +76,8 @@ Extraction
 Rectified ND spectrum
 =====================
 
-- Non-dispersion axes means something like ra/dec, or polarization? 
-- Nearly always (maybe always?) Implies some amount of resampling 
+- Non-dispersion axes means something like ra/dec, or polarization?
+- Nearly always (maybe always?) Implies some amount of resampling
 - There is one dimension that is ENTIRELY a spectral axis, all others are not
   specified by calling it a “Rectified ND Spectrum”, although they often do have
   some kind of meaning
@@ -80,7 +85,7 @@ Rectified ND spectrum
 Calibrated 2D image
 ===================
 
-- Not-resampled. 
+- Not-resampled.
 - Calibrated from raw pixel to wavelength.
 
 .. KBW: Not really sure this is terminology, but I've left it as written in the
@@ -99,13 +104,13 @@ Facilitating Data sharing, cross-matching, etc., standards via IVOA standards
 
 - More holistic than a pipeline. Often a  superset of pipeline with additional
   steps to facilitate data ingest, job orchestration, data
-  collection/coordination, data archiving, etc.  
+  collection/coordination, data archiving, etc.
 - Also analysis.
 
 *Pipeline*
 ==========
 
-- Organized code for **automatically** processing raw data into calibrated spectra and 
+- Organized code for **automatically** processing raw data into calibrated spectra and
     - Optionally derived quantities like redshifts, line fits, ...
 - More generically, the linking of several steps/jobs/codes/methods where
   outputs of one feed as inputs to another.
@@ -148,7 +153,7 @@ Heliocentric / barycentric correct
     - Or unprocessed.
     - And metadata needed to reduce raw data.
 
-- Raw data bundle (science+all cals needed to reduce it) 
+- Raw data bundle (science+all cals needed to reduce it)
 - Ideally would Supporting FAIR principles (Findable, Accessible, Interoperable,
   Reusable)
 - Noun or verb.
@@ -172,14 +177,14 @@ Data release
 - Aspires to be frozen.
 - Can be either a noun or a verb
 
-Open Development 
+Open Development
 ================
 
 - Developing software in a way that the community can see both how it has been
-  developed and why it was developed that way. 
+  developed and why it was developed that way.
 - Usually, but not absolutely necessarily, implies the community is also free to
   contribute.
-- Not necessarily open source.  
+- Not necessarily open source.
 - Repos are publicly visible, including issue tracker.
 
 Flux calibration
@@ -217,7 +222,7 @@ IFU (Integral-Field Unit)
 MOS (Multi-Object Spectroscopy)
 ===============================
 
-- Could be a fiber or a slit 
+- Could be a fiber or a slit
 - Multiple objects observed in the same exposure
 
 *Flux*
@@ -280,7 +285,7 @@ Data Structures
 
 - Python Data structures, which are Python classes.
 
-    - NDData/NDCube/SpectrumCollection, Spectrum etc.  
+    - NDData/NDCube/SpectrumCollection, Spectrum etc.
     - CCDData. Subclass of NDData
     - AstroData - from DRAGONS (collection of NDData-like objects, mapped to a
       file, plus metadata abstraction etc.)
@@ -340,7 +345,7 @@ Reduction (of spectroscopic data)
 - Spectroscopic reduction: the process of going from raw data to science-ready
   spectra
 
-Analysis (of spectroscopic data) 
+Analysis (of spectroscopic data)
 ================================
 
 - Taking scientific measurements or achieving scientific results from
@@ -377,7 +382,7 @@ Spectral fitting
 ================
 
 - Modeling an observed spectrum with templates (possibly physically motivated)
-  and/or mathematical functions 
+  and/or mathematical functions
 
 Digital Twins
 =============
@@ -420,7 +425,7 @@ Visual Inspection (of spectra)
 =====================
 
 - Changes in spectral dispersion power as a function of wavelength due to
-  instrument 
+  instrument
 
 - Resolving power vs Resolution/Dispersion
 
@@ -455,7 +460,7 @@ Spectral data visualization
 
 - Tools and procedures to display reduced spectral data
 
-Spectral decomposition 
+Spectral decomposition
 ======================
 
 - a form of spectral fitting that identifies separate components that appear in
@@ -483,5 +488,5 @@ Mentioned but not defined
 - WCS & Database archive
 - Cloud archiving
 - Modular functions which can be used by other pipelines.
-- Interactive Dashboard 
+- Interactive Dashboard
 

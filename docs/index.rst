@@ -42,6 +42,7 @@ tools can be combined to create complete spectroscopic workflows.
     user_guide.rst
     contributing.rst
     api.rst
+    glossary.rst
 
 
 .. grid:: 2
