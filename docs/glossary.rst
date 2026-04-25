@@ -42,14 +42,15 @@ with emphasis on long-slit spectroscopy and the specreduce package.
    Aperture
       A defined region on a 2D spectral image from which flux is extracted. In
       long-slit spectroscopy, the aperture is typically centered on the
-      :term:`trace` and has a specified :term:`aperture width`. The aperture
+      :term:`trace` and has a specified :term:`aperture width` in the
+      :term:`cross-dispersion axis` direction. The aperture
       defines which pixels contribute to the extracted :term:`1D spectrum`.
 
    Aperture Width
-      The spatial extent (in pixels) over which flux is summed during
-      :term:`extraction`. For :term:`boxcar extraction`, all pixels within the
-      aperture width receive equal weight. The optimal width balances including
-      most of the source flux while minimizing background noise.
+      The spatial extent, measured in pixels along the :term:`cross-dispersion axis`,
+      over which flux is summed during :term:`extraction`. For :term:`boxcar extraction`,
+      all pixels within the aperture width receive equal weight. The optimal width
+      includes most of the source flux while minimizing background noise.
 
    Arc Lamp
       A calibration light source that produces emission lines at known
