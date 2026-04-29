@@ -1,5 +1,5 @@
 
-1.9.0 (2026-04-27)
+1.9.0 (2026-04-30)
 ------------------
 
 New Features
@@ -22,7 +22,6 @@ Other changes
 - Deprecated the legacy ``docs/terms.rst`` terminology document. It will be
   removed in a future release; users should refer to the new Glossary
   instead. [#304]
-
 
 1.8.0 (2026-02-24)
 ------------------
