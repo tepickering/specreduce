@@ -32,8 +32,8 @@ import sphinx
 from specreduce import __version__
 
 try:
-    from sphinx_astropy.conf.v2 import *  # noqa
-    from sphinx_astropy.conf.v2 import extensions  # noqa
+    from sphinx_astropy.conf.v3 import *  # noqa
+    from sphinx_astropy.conf.v3 import extensions  # noqa
 except ImportError:
     print("ERROR: the documentation requires the sphinx-astropy package to be installed")
     sys.exit(1)
@@ -96,19 +96,16 @@ release = __version__
 html_static_path = ["_static"]  # html_theme = None
 html_style = "specreduce.css"
 
-html_theme_options.update(
-    {
-        "github_url": "https://github.com/astropy/specreduce",
-        "use_edit_page_button": False,
-        "navigation_with_keys": False,
-        "logo": {
-            "text": f"{project}",
-            "image_light": "_static/logo_icon.png",
-            "image_dark": "_static/logo_icon.png",
-        },
-        "secondary_sidebar_items": {"**": ["page-toc"], "index": []},
-    }
-)
+html_theme_options = {
+    "github_url": "https://github.com/astropy/specreduce",
+    "use_edit_page_button": False,
+    "navigation_with_keys": False,
+    "logo": {
+        "image_light": "_static/logo_icon.png",
+        "image_dark": "_static/logo_icon.png",
+    },
+    "secondary_sidebar_items": {"**": ["page-toc"], "index": []},
+}
 
 html_context = {
     "default_mode": "light",
@@ -125,10 +122,6 @@ html_context = {
 }
 
 # Custom sidebar templates, maps document names to template names.
-html_sidebars = {}
-html_sidebars['index'] = []
-html_sidebars["contributing"] = []
-
 # html_sidebars['**'] = ['localtoc.html']
 # html_sidebars['index'] = [] #['globaltoc.html', 'localtoc.html']
 
