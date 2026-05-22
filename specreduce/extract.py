@@ -12,7 +12,7 @@ from scipy.integrate import trapezoid
 from scipy.interpolate import RectBivariateSpline
 
 from specutils import Spectrum
-from specreduce.core import SpecreduceOperation, ImageLike, MaskingOption
+from specreduce.core import SpecreduceOperation, ImageLike, MaskingOption, parse_image
 from specreduce.tracing import Trace, FlatTrace
 
 __all__ = ["BoxcarExtract", "HorneExtract", "OptimalExtract"]
@@ -232,7 +232,7 @@ class BoxcarExtract(SpecreduceOperation):
         if width <= 0:
             raise ValueError("The window width must be positive")
 
-        self.image = self._parse_image(
+        self.image = parse_image(
             image, disp_axis=disp_axis, mask_treatment=self.mask_treatment
         )
 
