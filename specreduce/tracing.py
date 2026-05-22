@@ -11,7 +11,7 @@ from astropy.nddata import NDData
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils.decorators import deprecated
 
-from specreduce.core import _ImageParser
+from specreduce.core import parse_image
 
 __all__ = ["Trace", "FlatTrace", "ArrayTrace", "FitTrace"]
 
@@ -105,7 +105,7 @@ class Trace:
 
 
 @dataclass
-class FlatTrace(Trace, _ImageParser):
+class FlatTrace(Trace):
     """
     Trace that is constant along the axis being traced.
 
@@ -122,7 +122,7 @@ class FlatTrace(Trace, _ImageParser):
     trace_pos: float
 
     def __post_init__(self):
-        self.image = self._parse_image(self.image)
+        self.image = parse_image(self.image)
 
         self.set_position(self.trace_pos)
 
@@ -147,7 +147,7 @@ class FlatTrace(Trace, _ImageParser):
 
 
 @dataclass
-class ArrayTrace(Trace, _ImageParser):
+class ArrayTrace(Trace):
     """
     Define a trace given an array of trace positions.
 
@@ -181,7 +181,7 @@ class ArrayTrace(Trace, _ImageParser):
         # dropped at the end and a regular array will be returned.
         self.trace = np.ma.MaskedArray(trace_data, total_mask)
 
-        self.image = self._parse_image(self.image)
+        self.image = parse_image(self.image)
 
         nx = self.image.shape[1]
         nt = len(self.trace)
@@ -207,7 +207,7 @@ class ArrayTrace(Trace, _ImageParser):
 
 
 @dataclass
-class FitTrace(Trace, _ImageParser):
+class FitTrace(Trace):
     """
     Trace the spectrum aperture in an image.
 
@@ -294,17 +294,17 @@ class FitTrace(Trace, _ImageParser):
     def __post_init__(self):
 
         # Parse image, including masked/nonfinite data handling based on
-        # choice of `mask_treatment`. returns a Spectrum1D
+        # choice of `mask_treatment`. returns a Spectrum
         if self.mask_treatment not in self._valid_mask_treatment_methods:
             raise ValueError(
                 "`mask_treatment` must be one of " f"{self._valid_mask_treatment_methods}"
             )
 
-        self.image = self._parse_image(
+        self.image = parse_image(
             self.image, disp_axis=self._disp_axis, mask_treatment=self.mask_treatment
         )
 
-        # _parse_image returns a Spectrum1D. convert this to a masked array
+        # parse_image returns a Spectrum. convert this to a masked array
         # for ease of calculations here (even if there is no masked data).
         # Note: uncertainties are dropped, this should also be addressed at
         # some point probably across the package.
