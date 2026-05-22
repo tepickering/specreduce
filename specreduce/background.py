@@ -10,7 +10,7 @@ from astropy.stats import sigma_clip
 from astropy.utils.decorators import deprecated_attribute
 
 from specutils import Spectrum
-from specreduce.core import _ImageParser, MaskingOption, ImageLike
+from specreduce.core import parse_image, MaskingOption, ImageLike
 from specreduce.extract import _ap_weight_image
 from specreduce.tracing import Trace, FlatTrace
 
@@ -18,7 +18,7 @@ __all__ = ["Background"]
 
 
 @dataclass
-class Background(_ImageParser):
+class Background:
     """
     Determine the background from an image for subtraction.
 
@@ -95,7 +95,7 @@ class Background(_ImageParser):
     bkg_array = deprecated_attribute("bkg_array", "1.3")
 
     def __post_init__(self):
-        self.image = self._parse_image(
+        self.image = parse_image(
             self.image, disp_axis=self.disp_axis, mask_treatment=self.mask_treatment
         )
 
@@ -311,7 +311,7 @@ class Background(_ImageParser):
         `Background`
             A Background object with two-sided background regions.
         """
-        image = _ImageParser._get_data_from_image(image) if image is not None else cls.image
+        image = parse_image(image) if image is not None else cls.image
         kwargs["traces"] = [trace_object - separation, trace_object + separation]
         return cls(image=image, **kwargs)
 
@@ -347,7 +347,7 @@ class Background(_ImageParser):
         `Background`
             A Background object with a one-sided background region.
         """
-        image = _ImageParser._get_data_from_image(image) if image is not None else cls.image
+        image = parse_image(image) if image is not None else cls.image
         kwargs["traces"] = [trace_object + separation]
         return cls(image=image, **kwargs)
 
@@ -368,7 +368,7 @@ class Background(_ImageParser):
         spec : `~specutils.Spectrum`
             Spectrum object with same shape as ``image``, including uncertainty.
         """
-        image = self._parse_image(image)
+        image = parse_image(image) if image is not None else self.image
         arr = np.tile(self._bkg_array, (image.shape[0], 1))
         var_arr = np.tile(self._bkg_variance, (image.shape[0], 1))
         uncertainty = VarianceUncertainty(var_arr * self._variance_unit).represent_as(
@@ -432,7 +432,7 @@ class Background(_ImageParser):
             Spectrum object with same shape as ``image``, including propagated
             uncertainty.
         """
-        image = self._parse_image(image)
+        image = parse_image(image) if image is not None else self.image
         return image - self.bkg_image(image)
 
     def sub_spectrum(self, image=None) -> Spectrum:
