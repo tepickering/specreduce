@@ -1,6 +1,6 @@
 import numpy as np
 
-from specreduce.core import _ImageParser
+from specreduce.core import parse_image
 from specreduce.tracing import Trace, FlatTrace
 from specreduce.extract import _ap_weight_image, _align_along_trace
 
@@ -86,10 +86,9 @@ def measure_cross_dispersion_profile(image, trace=None, crossdisp_axis=0,
 
     unit = getattr(image, 'unit', None)
 
-    # parse image, which will return a spectrum1D (note: this is not ideal,
+    # parse image, which will return a Spectrum (note: this is not ideal,
     # but will be addressed at some point)
-    parser = _ImageParser()
-    image = parser._parse_image(image, disp_axis=disp_axis)
+    image = parse_image(image, disp_axis=disp_axis)
 
     # which we then need to make back into a masked array
     # again this way of parsing the image is not ideal but
