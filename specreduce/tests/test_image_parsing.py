@@ -2,7 +2,7 @@ import numpy as np
 from astropy import units as u
 
 from specutils import Spectrum
-from specreduce.core import _ImageParser
+from specreduce.core import parse_image
 from specreduce.extract import HorneExtract
 from specreduce.tracing import FlatTrace
 
@@ -50,7 +50,7 @@ def compare_images(all_images, key, collection, compare='s1d'):
 # test consistency of general image parser results
 def test_parse_general(all_images):
 
-    all_images_parsed = {k: _ImageParser()._parse_image(im)
+    all_images_parsed = {k: parse_image(im)
                          for k, im in all_images.items()}
     for key in all_images_parsed.keys():
         compare_images(all_images, key, all_images_parsed)
@@ -68,7 +68,7 @@ def test_parse_horne(all_images):
 
     for key, col in images_collection.items():
         img = all_images[key]
-        col['general'] = _ImageParser()._parse_image(img)
+        col['general'] = parse_image(img)
 
         if hasattr(all_images[key], 'uncertainty'):
             defaults = {}
