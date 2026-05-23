@@ -12,7 +12,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from gwcs import coordinate_frames
 from numpy import ndarray
 
-from specreduce.core import _ImageParser
+from specreduce.core import parse_image
 
 __all__ = ["TiltSolution"]
 
@@ -302,8 +302,7 @@ class TiltSolution:
 
         # TODO: In the future, we want to make sure that we don't copy the data unless absolutely
         # necessary.
-        ip = _ImageParser()
-        im = ip._parse_image(flux, disp_axis=self.disp_axis, mask_treatment=mask_treatment)
+        im = parse_image(flux, disp_axis=self.disp_axis, mask_treatment=mask_treatment)
         flux = im.flux.value
 
         ny, nx = flux.data.shape

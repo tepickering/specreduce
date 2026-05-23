@@ -10,7 +10,7 @@ from scipy.optimize import minimize
 from scipy.spatial import KDTree
 from specutils import Spectrum
 
-from specreduce.core import _ImageParser
+from specreduce.core import parse_image
 from specreduce.line_matching import find_arc_lines
 from specreduce.tilt_solution import TiltSolution
 from specreduce.tracing import Trace
@@ -101,11 +101,9 @@ class TiltCorrection:
         if not isinstance(arc_frames, Sequence):
             arc_frames = [arc_frames]
 
-        # An ugly hack that should be changed after the refactoring of image parsing.
-        ip = _ImageParser()
         self.arc_frames = []
         for f in arc_frames:
-            im = ip._parse_image(f, disp_axis=disp_axis, mask_treatment=mask_treatment)
+            im = parse_image(f, disp_axis=disp_axis, mask_treatment=mask_treatment)
             self.arc_frames.append(NDData(im.flux, uncertainty=im.uncertainty, mask=im.mask))
         self.nframes = len(arc_frames)
         self._ny, self._nx = self.arc_frames[0].data.shape
