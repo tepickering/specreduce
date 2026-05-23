@@ -19,7 +19,7 @@ MaskingOption = Literal[
 
 ImageLike = np.ndarray | NDData | u.Quantity
 
-# The '_valid_mask_treatment_methods' tuples in the Background, Trace, and
+# The '_valid_mask_treatment_methods' tuples in the Background, Trace, and nddata
 # Extract classes are subsets of these implemented methods.
 _IMPLEMENTED_MASK_TREATMENTS = (
     "apply",
@@ -42,8 +42,8 @@ def parse_image(
     missing in the provided image with generic values. Accepted image types are:
 
         - `~specutils.Spectrum` (preferred)
-        - `~astropy.nddata.ccddata.CCDData`
-        - `~astropy.nddata.ndddata.NDDData`
+        - `~astropy.nddata.CCDData`
+        - `~astropy.nddata.NDDData`
         - `~astropy.units.quantity.Quantity`
         - `~numpy.ndarray`
 
