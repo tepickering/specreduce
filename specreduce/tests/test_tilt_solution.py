@@ -14,6 +14,7 @@ def test_diff_poly2d_x_valid_derivative():
     assert derivative.c0_1 == 5
 
 
+@pytest.mark.remote_data
 def test_tilt_solution_gwcs(mk_default_tc):
     tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
@@ -37,6 +38,7 @@ def test_tilt_solution_gwcs(mk_default_tc):
     np.testing.assert_allclose(det_y_gwcs, cdisp_arr)
 
 
+@pytest.mark.remote_data
 def test_tilt_solution_gwcs_cache_invalidation(mk_default_tc):
     tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
@@ -52,6 +54,7 @@ def test_tilt_solution_gwcs_cache_invalidation(mk_default_tc):
     assert "gwcs" not in ts.__dict__
 
 
+@pytest.mark.remote_data
 def test_det_to_corr_round_trip(mk_default_tc):
     tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
@@ -69,6 +72,7 @@ def test_det_to_corr_round_trip(mk_default_tc):
     np.testing.assert_allclose(cdisp_out2, cdisp)
 
 
+@pytest.mark.remote_data
 def test_d2c_cache_invalidation(mk_default_tc):
     tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
@@ -84,6 +88,7 @@ def test_d2c_cache_invalidation(mk_default_tc):
     assert "d2c" not in ts.__dict__
 
 
+@pytest.mark.remote_data
 def test_gwcs_inverse(mk_default_tc):
     tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
@@ -105,6 +110,7 @@ def test_gwcs_inverse(mk_default_tc):
     np.testing.assert_allclose(cdisp_cor_inv, cdisp_direct)
 
 
+@pytest.mark.remote_data
 def test_resample(mk_default_tc, mk_arc_frames):
     arcs = mk_arc_frames
     tc = mk_default_tc
@@ -113,6 +119,7 @@ def test_resample(mk_default_tc, mk_arc_frames):
     tc.solution.resample(arcs[0])
 
 
+@pytest.mark.remote_data
 def test_c2d_derivative_cache_invalidation(mk_default_tc):
     tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
@@ -128,6 +135,7 @@ def test_c2d_derivative_cache_invalidation(mk_default_tc):
     assert "c2d_derivative" not in ts.__dict__
 
 
+@pytest.mark.remote_data
 def test_inverse_without_image_shape(mk_default_tc):
     tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
@@ -140,6 +148,7 @@ def test_inverse_without_image_shape(mk_default_tc):
         _ = ts_no_shape.d2c
 
 
+@pytest.mark.remote_data
 def test_from_gwcs(mk_default_tc):
     tc = mk_default_tc
     tc.find_arc_lines(3.0, 5.0)
@@ -178,6 +187,7 @@ def test_from_gwcs_invalid():
         TiltSolution.from_gwcs(wcs)
 
 
+@pytest.mark.remote_data
 def test_resample_disp_axis_0(mk_default_tc, mk_arc_frames):
     arcs = mk_arc_frames
     tc = mk_default_tc
