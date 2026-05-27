@@ -43,7 +43,7 @@ def parse_image(
 
         - `~specutils.Spectrum` (preferred)
         - `~astropy.nddata.CCDData`
-        - `~astropy.nddata.NDDData`
+        - `~astropy.nddata.NDData`
         - `~astropy.units.quantity.Quantity`
         - `~numpy.ndarray`
 
@@ -66,10 +66,10 @@ def parse_image(
             causes the mask to extend across the entire cross-dispersion axis.
         - ``zero_fill``: Pixels that are either masked or non-finite are replaced with 0.0,\
             and the mask is dropped.
-        - ``nan_fill``:  Pixels that are either masked or non-finite are replaced with nan,\
+        - ``nan_fill``: Pixels that are either masked or non-finite are replaced with nan,\
             and the mask is dropped.
-        - ``apply_mask_only``: The  image and mask are left unmodified.
-        - ``apply_nan_only``: The  image is left unmodified, the old mask is dropped, and a\
+        - ``apply_mask_only``: The image and mask are left unmodified.
+        - ``apply_nan_only``: The image is left unmodified, the old mask is dropped, and a\
             new mask is created based on non-finite values.
 
     Returns
