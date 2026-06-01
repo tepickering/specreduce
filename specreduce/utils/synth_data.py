@@ -114,6 +114,19 @@ class SynthImage:
         """Add a constant background level (counts)."""
         return self._clone(_layers=self._layers + (BackgroundLayer(level),))
 
+    def add_source(
+        self,
+        profile: Model | None = None,
+        trace_center: float | None = None,
+        trace_order: int = 3,
+        trace_coeffs: dict | None = None,
+    ) -> "SynthImage":
+        """Add a continuum source with a Chebyshev-traced spatial profile."""
+        if profile is None:
+            profile = models.Moffat1D(amplitude=10, alpha=0.1)
+        layer = SourceLayer(profile, trace_center, trace_order, trace_coeffs)
+        return self._clone(_layers=self._layers + (layer,))
+
     def _resolve_wcs(self):
         has_arc = any(isinstance(layer, ArcLayer) for layer in self._layers)
         if self._wcs is not None:
@@ -187,7 +200,26 @@ class SynthImage:
 
 @dataclass(frozen=True)
 class SourceLayer:
-    pass  # implemented in Task 2
+    """A continuum source whose spatial profile follows a Chebyshev trace.
+
+    The dispersion axis is the X (column) axis, matching the historical
+    ``make_2d_trace_image`` behaviour (the trace ignores any WCS).
+    """
+    profile: Model
+    trace_center: float | None = None
+    trace_order: int = 3
+    trace_coeffs: dict | None = None
+
+    def render(self, ctx: _RenderContext) -> np.ndarray:
+        trace_center = ctx.ny / 2 if self.trace_center is None else self.trace_center
+        trace_coeffs = (
+            {"c0": 0, "c1": 50, "c2": 100}
+            if self.trace_coeffs is None
+            else self.trace_coeffs
+        )
+        trace_mod = models.Chebyshev1D(degree=self.trace_order, **trace_coeffs)
+        trace = ctx.yy - trace_center + trace_mod(ctx.xx / ctx.nx)
+        return self.profile(trace)
 
 
 @dataclass(frozen=True)

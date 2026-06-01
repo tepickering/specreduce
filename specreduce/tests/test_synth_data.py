@@ -38,3 +38,27 @@ def test_to_ccddata_no_wcs():
     assert ccd.unit == u.count
     assert ccd.data.shape == (15, 30)
     assert ccd.wcs is None
+
+
+def test_add_source_adds_flux_at_trace():
+    base = SynthImage(nx=200, ny=100).add_background(5)
+    src = base.add_source(profile=models.Gaussian1D(amplitude=100, stddev=10))
+    base_arr = base.to_array()
+    src_arr = src.to_array()
+    # source adds flux somewhere; total flux strictly increases
+    assert src_arr.sum() > base_arr.sum()
+    assert src_arr.max() > base_arr.max()
+
+
+def test_add_source_default_profile():
+    arr = SynthImage(nx=200, ny=100).add_source().to_array()
+    assert arr.shape == (100, 200)
+    assert arr.max() > 0
+
+
+def test_add_source_stackable():
+    one = SynthImage(nx=200, ny=100).add_source(
+        profile=models.Gaussian1D(amplitude=100, stddev=10)
+    )
+    two = one.add_source(profile=models.Gaussian1D(amplitude=100, stddev=10))
+    assert two.to_array().sum() > one.to_array().sum()
