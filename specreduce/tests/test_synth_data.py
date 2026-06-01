@@ -5,6 +5,8 @@ from astropy.modeling import models
 from astropy.nddata import CCDData
 from astropy.wcs import WCS
 
+from specutils import Spectrum
+
 from specreduce.utils.synth_data import SynthImage
 
 
@@ -201,3 +203,20 @@ def test_poisson_then_read_noise_both_applied():
     poisson_only = SynthImage(nx=40, ny=40, seed=5).add_background(100).add_poisson_noise()
     both = poisson_only.add_read_noise(5)
     assert not np.array_equal(poisson_only.to_array(), both.to_array())
+
+
+def test_to_spectrum_no_wcs():
+    sp = SynthImage(nx=60, ny=20).add_background(5).to_spectrum()
+    assert isinstance(sp, Spectrum)
+    assert sp.flux.shape == (20, 60)
+    assert sp.flux.unit == u.count
+
+
+@pytest.mark.remote_data
+@pytest.mark.filterwarnings("ignore:No observer defined on WCS")
+def test_to_spectrum_with_wcs():
+    wcs = _linear_wcs(300)
+    sp = SynthImage(nx=300, ny=100, wcs=wcs).add_arcs(["HeI"]).to_spectrum()
+    assert isinstance(sp, Spectrum)
+    assert sp.flux.shape == (100, 300)
+    assert sp.spectral_axis is not None
