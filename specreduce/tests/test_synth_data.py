@@ -165,6 +165,20 @@ def _linear_wcs(nx, extent=(3000, 6000), wave_unit=u.Angstrom):
     return wcs
 
 
+def _transposed_wcs(ny, extent=(3000, 6000), wave_unit=u.Angstrom):
+    """A WCS whose spectral axis is the *second* axis (dispersion along Y)."""
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype[0] = "PIXEL"
+    wcs.wcs.ctype[1] = "WAVE"
+    wcs.wcs.cunit[0] = u.pixel
+    wcs.wcs.cunit[1] = wave_unit
+    wcs.wcs.crval[0] = 0
+    wcs.wcs.cdelt[0] = 1
+    wcs.wcs.crval[1] = extent[0]
+    wcs.wcs.cdelt[1] = (extent[1] - extent[0]) / ny
+    return wcs
+
+
 # --- local (no network) validation tests ---
 
 def test_arc_requires_wcs_or_extent():
@@ -231,6 +245,18 @@ def test_arc_image_supplied_wcs_and_tilt():
     tilt = models.Chebyshev1D(degree=2, c0=50, c1=0, c2=100)
     ccd = SynthImage(nx=300, ny=100, wcs=wcs).add_arcs(["HeI"], tilt_func=tilt).to_ccddata()
     assert ccd.data.shape == (100, 300)
+
+
+@pytest.mark.remote_data
+@pytest.mark.filterwarnings("ignore:No observer defined on WCS")
+def test_arcs_dispersion_along_y_axis():
+    # spectral axis is the second WCS axis -> disp_axis == 1 branches in ArcLayer
+    ny = 300
+    wcs = _transposed_wcs(ny)
+    tilt = models.Chebyshev1D(degree=2, c0=20, c1=0, c2=40)
+    img = SynthImage(nx=100, ny=ny, wcs=wcs).add_arcs(["HeI"], tilt_func=tilt).to_array()
+    assert img.shape == (ny, 100)
+    assert img.max() > 0
 
 
 @pytest.mark.remote_data
@@ -349,3 +375,29 @@ def test_make_2d_spec_image_deprecated_and_matches():
     assert isinstance(ccd, CCDData)
     assert ccd.data.shape == (100, 300)
     assert np.array_equal(ccd.data, expected)
+
+
+def test_make_2d_trace_image_add_noise():
+    # exercises the add_noise=True (Poisson) branch of the deprecated shim
+    with pytest.warns(AstropyDeprecationWarning):
+        ccd = make_2d_trace_image(nx=100, ny=50, add_noise=True)
+    assert isinstance(ccd, CCDData)
+    assert ccd.data.shape == (50, 100)
+
+
+@pytest.mark.remote_data
+@pytest.mark.filterwarnings("ignore:No observer defined on WCS")
+def test_make_2d_arc_image_add_noise():
+    with pytest.warns(AstropyDeprecationWarning):
+        ccd = make_2d_arc_image(nx=300, ny=100, add_noise=True)
+    assert isinstance(ccd, CCDData)
+    assert ccd.data.shape == (100, 300)
+
+
+@pytest.mark.remote_data
+@pytest.mark.filterwarnings("ignore:No observer defined on WCS")
+def test_make_2d_spec_image_add_noise():
+    with pytest.warns(AstropyDeprecationWarning):
+        ccd = make_2d_spec_image(nx=300, ny=100, add_noise=True)
+    assert isinstance(ccd, CCDData)
+    assert ccd.data.shape == (100, 300)
