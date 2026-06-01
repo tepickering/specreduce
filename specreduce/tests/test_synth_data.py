@@ -3,11 +3,17 @@ import pytest
 from astropy import units as u
 from astropy.modeling import models
 from astropy.nddata import CCDData
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from astropy.wcs import WCS
 
 from specutils import Spectrum
 
 from specreduce.utils.synth_data import SynthImage
+from specreduce.utils.synth_data import (
+    make_2d_trace_image,
+    make_2d_arc_image,
+    make_2d_spec_image,
+)
 
 
 def test_empty_image_is_zeros():
@@ -220,3 +226,39 @@ def test_to_spectrum_with_wcs():
     assert isinstance(sp, Spectrum)
     assert sp.flux.shape == (100, 300)
     assert sp.spectral_axis is not None
+
+
+def test_make_2d_trace_image_deprecated_and_matches():
+    with pytest.warns(AstropyDeprecationWarning):
+        ccd = make_2d_trace_image(add_noise=False)
+    expected = (
+        SynthImage(nx=3000, ny=1000)
+        .add_background(5)
+        .add_source(profile=models.Moffat1D(amplitude=10, alpha=0.1))
+        .to_array()
+    )
+    assert isinstance(ccd, CCDData)
+    assert np.array_equal(ccd.data, expected)
+
+
+@pytest.mark.remote_data
+@pytest.mark.filterwarnings("ignore:No observer defined on WCS")
+def test_make_2d_arc_image_deprecated_and_matches():
+    with pytest.warns(AstropyDeprecationWarning):
+        ccd = make_2d_arc_image(nx=300, ny=100, add_noise=False)
+    expected = (
+        SynthImage(nx=300, ny=100, extent=(3500, 7000))
+        .add_background(5)
+        .add_arcs(("HeI",))
+        .to_array()
+    )
+    assert np.array_equal(ccd.data, expected)
+
+
+@pytest.mark.remote_data
+@pytest.mark.filterwarnings("ignore:No observer defined on WCS")
+def test_make_2d_spec_image_deprecated():
+    with pytest.warns(AstropyDeprecationWarning):
+        ccd = make_2d_spec_image(nx=300, ny=100, add_noise=False)
+    assert isinstance(ccd, CCDData)
+    assert ccd.data.shape == (100, 300)
