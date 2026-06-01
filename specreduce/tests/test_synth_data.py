@@ -162,3 +162,42 @@ def test_add_skylines_matches_add_arcs():
     sky = SynthImage(nx=300, ny=100, wcs=wcs, seed=1).add_skylines("OH_GMOS")
     arc = SynthImage(nx=300, ny=100, wcs=wcs, seed=1).add_arcs("OH_GMOS")
     assert np.array_equal(sky.to_array(), arc.to_array())
+
+
+def test_read_noise_changes_image_and_is_reproducible():
+    base = SynthImage(nx=40, ny=40, seed=42).add_background(100)
+    noisy = base.add_read_noise(5)
+    a = noisy.to_array()
+    b = noisy.to_array()
+    assert np.array_equal(a, b)              # same seed -> reproducible
+    assert not np.allclose(a, 100)           # read noise actually applied
+    assert abs(a.std() - 5) < 1.0            # ~ sigma
+
+
+def test_poisson_noise_reproducible_with_seed():
+    img = SynthImage(nx=40, ny=40, seed=7).add_background(100).add_poisson_noise()
+    assert np.array_equal(img.to_array(), img.to_array())
+
+
+def test_different_seed_differs():
+    a = SynthImage(nx=40, ny=40, seed=1).add_background(100).add_poisson_noise().to_array()
+    b = SynthImage(nx=40, ny=40, seed=2).add_background(100).add_poisson_noise().to_array()
+    assert not np.array_equal(a, b)
+
+
+def test_unseeded_runs():
+    arr = SynthImage(nx=20, ny=20).add_background(100).add_poisson_noise().to_array()
+    assert arr.shape == (20, 20)
+
+
+def test_rdnoise_alias_equivalent():
+    a = SynthImage(nx=20, ny=20, seed=3).add_background(50).add_read_noise(4).to_array()
+    b = SynthImage(nx=20, ny=20, seed=3).add_background(50).add_rdnoise(4).to_array()
+    assert np.array_equal(a, b)
+
+
+def test_poisson_then_read_noise_both_applied():
+    # both noise stages applied; result differs from poisson-only with same seed
+    poisson_only = SynthImage(nx=40, ny=40, seed=5).add_background(100).add_poisson_noise()
+    both = poisson_only.add_read_noise(5)
+    assert not np.array_equal(poisson_only.to_array(), both.to_array())

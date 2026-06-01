@@ -149,6 +149,16 @@ class SynthImage:
         """Add night-sky airglow emission lines (OH lists), wrapping ``add_arcs``."""
         return self.add_arcs(linelists, **kwargs)
 
+    def add_poisson_noise(self) -> "SynthImage":
+        """Apply Poisson noise to the rendered signal (requires photutils)."""
+        return self._clone(_poisson=True)
+
+    def add_read_noise(self, sigma: float) -> "SynthImage":
+        """Add Gaussian read noise of standard deviation ``sigma`` (counts)."""
+        return self._clone(_read_noise=sigma)
+
+    add_rdnoise = add_read_noise
+
     def _resolve_wcs(self):
         has_arc = any(isinstance(layer, ArcLayer) for layer in self._layers)
         if self._wcs is not None:
