@@ -127,6 +127,24 @@ class SynthImage:
         layer = SourceLayer(profile, trace_center, trace_order, trace_coeffs)
         return self._clone(_layers=self._layers + (layer,))
 
+    def add_arcs(
+        self,
+        linelists=("HeI",),
+        line_fwhm: float = 5.0,
+        amplitude_scale: float = 1.0,
+        wave_air: bool = False,
+        tilt_func: Model | None = None,
+    ) -> "SynthImage":
+        """Add emission lines from one or more pypeit calibration line lists."""
+        if tilt_func is None:
+            tilt_func = models.Legendre1D(degree=0)
+        if isinstance(linelists, str):
+            linelists = (linelists,)
+        layer = ArcLayer(
+            tuple(linelists), line_fwhm, amplitude_scale, wave_air, tilt_func
+        )
+        return self._clone(_layers=self._layers + (layer,))
+
     def _resolve_wcs(self):
         has_arc = any(isinstance(layer, ArcLayer) for layer in self._layers)
         if self._wcs is not None:
@@ -224,7 +242,49 @@ class SourceLayer:
 
 @dataclass(frozen=True)
 class ArcLayer:
-    pass  # implemented in Task 3
+    """Emission lines from one or more pypeit calibration line lists.
+
+    Requires a resolvable WCS (supplied on ``SynthImage`` or built from its
+    ``extent``). ``tilt_func`` applies a cross-dispersion tilt to simulate
+    curved lines.
+    """
+    linelists: tuple
+    line_fwhm: float = 5.0
+    amplitude_scale: float = 1.0
+    wave_air: bool = False
+    tilt_func: Model = field(default_factory=lambda: models.Legendre1D(degree=0))
+
+    def render(self, ctx: _RenderContext) -> np.ndarray:
+        xx, yy = ctx.xx, ctx.yy
+        if self.tilt_func is not None:
+            if not isinstance(self.tilt_func, _ALLOWED_TILT):
+                raise ValueError(
+                    "The only tilt functions currently supported are 1D polynomials "
+                    "from astropy.models."
+                )
+            if ctx.disp_axis == 0:
+                xx = xx + self.tilt_func((yy - ctx.ny / 2) / ctx.ny)
+            else:
+                yy = yy + self.tilt_func((xx - ctx.nx / 2) / ctx.nx)
+
+        z = np.zeros((ctx.ny, ctx.nx))
+        linelist = load_pypeit_calibration_lines(list(self.linelists), wave_air=self.wave_air)
+        if linelist is not None:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="No observer defined on WCS.*")
+                line_disp_positions = ctx.wcs.spectral.world_to_pixel(linelist["wavelength"])
+            line_sigma = gaussian_fwhm_to_sigma * self.line_fwhm
+            for line_pos, ampl in zip(line_disp_positions, linelist["amplitude"]):
+                line_mod = models.Gaussian1D(
+                    amplitude=ampl * self.amplitude_scale,
+                    mean=line_pos,
+                    stddev=line_sigma,
+                )
+                if ctx.disp_axis == 0:
+                    z += line_mod(xx)
+                else:
+                    z += line_mod(yy)
+        return z
 
 
 def make_2d_trace_image(
