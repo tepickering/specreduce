@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see ../../licenses/LICENSE.rst
 import warnings
-from typing import Sequence
+from dataclasses import dataclass, field
 
 import numpy as np
 from astropy import units as u
@@ -9,13 +9,190 @@ from astropy.nddata import CCDData
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.wcs import WCS
 
+from specutils import Spectrum
+
 from specreduce.calibration_data import load_pypeit_calibration_lines
 
 __all__ = [
-    'make_2d_trace_image',
-    'make_2d_arc_image',
-    'make_2d_spec_image'
+    "SynthImage",
+    "make_2d_trace_image",
+    "make_2d_arc_image",
+    "make_2d_spec_image",
 ]
+
+_ALLOWED_TILT = (
+    models.Legendre1D,
+    models.Chebyshev1D,
+    models.Polynomial1D,
+    models.Hermite1D,
+)
+
+
+@dataclass(frozen=True)
+class _RenderContext:
+    """Shared geometry passed to every layer's ``render`` method."""
+    nx: int
+    ny: int
+    xx: np.ndarray
+    yy: np.ndarray
+    wcs: WCS | None
+    disp_axis: int
+
+
+@dataclass(frozen=True)
+class BackgroundLayer:
+    """A constant additive background level in counts."""
+    level: float
+
+    def render(self, ctx: _RenderContext) -> np.ndarray:
+        return np.full((ctx.ny, ctx.nx), float(self.level))
+
+
+class SynthImage:
+    """
+    Immutable, composable builder for synthetic 2D spectroscopic images.
+
+    Build an image by chaining ``add_*`` methods, then render it with one of the
+    ``to_*`` terminal methods. Each ``add_*`` returns a *new* ``SynthImage``; the
+    original is never mutated, so a base configuration can be safely branched.
+
+    Parameters
+    ----------
+    nx
+        Size of the image along the X (dispersion) axis.
+    ny
+        Size of the image along the Y (spatial) axis.
+    wcs
+        Optional 2D WCS with a single spectral axis. If not provided and arc
+        layers are present, a linear ``WAVE``/``PIXEL`` WCS is built from
+        ``extent`` and ``wave_unit``.
+    extent
+        Beginning and end wavelengths used to build a default WCS when ``wcs``
+        is not supplied and arc layers are present.
+    wave_unit
+        Wavelength unit for the default WCS.
+    seed
+        Seed for the random number generator used by the noise layers. If
+        ``None``, noise is non-deterministic.
+    """
+
+    def __init__(
+        self,
+        nx: int = 3000,
+        ny: int = 1000,
+        wcs: WCS | None = None,
+        extent=(3500, 7000),
+        wave_unit: u.Unit = u.Angstrom,
+        seed: int | None = None,
+    ):
+        self.nx = nx
+        self.ny = ny
+        self._wcs = wcs
+        self._extent = extent
+        self._wave_unit = wave_unit
+        self._seed = seed
+        self._layers = ()
+        self._poisson = False
+        self._read_noise = None
+
+    def _clone(self, **changes) -> "SynthImage":
+        new = SynthImage.__new__(SynthImage)
+        new.nx = self.nx
+        new.ny = self.ny
+        new._wcs = self._wcs
+        new._extent = self._extent
+        new._wave_unit = self._wave_unit
+        new._seed = self._seed
+        new._layers = self._layers
+        new._poisson = self._poisson
+        new._read_noise = self._read_noise
+        for key, value in changes.items():
+            setattr(new, key, value)
+        return new
+
+    def add_background(self, level: float) -> "SynthImage":
+        """Add a constant background level (counts)."""
+        return self._clone(_layers=self._layers + (BackgroundLayer(level),))
+
+    def _resolve_wcs(self):
+        has_arc = any(isinstance(layer, ArcLayer) for layer in self._layers)
+        if self._wcs is not None:
+            wcs = self._wcs
+            if wcs.spectral.naxis != 1:
+                raise ValueError("Provided WCS must have a spectral axis.")
+            if wcs.naxis != 2:
+                raise ValueError("WCS must have NAXIS=2 for a 2D image.")
+        elif has_arc:
+            if self._extent is None:
+                raise ValueError("Must specify either a wavelength extent or a WCS.")
+            if len(self._extent) != 2:
+                raise ValueError("Wavelength extent must be of length 2.")
+            if u.get_physical_type(self._wave_unit) != "length":
+                raise ValueError("Wavelength unit must be a length unit.")
+            wcs = WCS(naxis=2)
+            wcs.wcs.ctype[0] = "WAVE"
+            wcs.wcs.ctype[1] = "PIXEL"
+            wcs.wcs.cunit[0] = self._wave_unit
+            wcs.wcs.cunit[1] = u.pixel
+            wcs.wcs.crval[0] = self._extent[0]
+            wcs.wcs.cdelt[0] = (self._extent[1] - self._extent[0]) / self.nx
+            wcs.wcs.crval[1] = 0
+            wcs.wcs.cdelt[1] = 1
+        else:
+            wcs = None
+
+        if wcs is None:
+            disp_axis = 1
+        else:
+            is_spectral = [a["coordinate_type"] == "spectral" for a in wcs.get_axis_types()]
+            disp_axis = 0 if is_spectral[0] else 1
+        return wcs, disp_axis
+
+    def _render(self):
+        wcs, disp_axis = self._resolve_wcs()
+        x = np.arange(self.nx)
+        y = np.arange(self.ny)
+        xx, yy = np.meshgrid(x, y)
+        ctx = _RenderContext(self.nx, self.ny, xx, yy, wcs, disp_axis)
+
+        signal = np.zeros((self.ny, self.nx))
+        for layer in self._layers:
+            signal = signal + layer.render(ctx)
+
+        rng = np.random.default_rng(self._seed)
+        if self._poisson:
+            from photutils.datasets import apply_poisson_noise
+            signal = apply_poisson_noise(signal, seed=rng)
+        if self._read_noise is not None:
+            signal = signal + rng.normal(0.0, self._read_noise, size=signal.shape)
+
+        return signal, wcs
+
+    def to_array(self) -> np.ndarray:
+        """Render and return the image as a plain ``numpy.ndarray`` (counts)."""
+        return self._render()[0]
+
+    def to_ccddata(self) -> CCDData:
+        """Render and return the image as a `~astropy.nddata.CCDData`."""
+        data, wcs = self._render()
+        return CCDData(data, unit=u.count, wcs=wcs)
+
+    def to_spectrum(self) -> Spectrum:
+        """Render and return the image as a `~specutils.Spectrum`."""
+        data, wcs = self._render()
+        if wcs is not None:
+            return Spectrum(flux=data * u.count, wcs=wcs)
+        return Spectrum(flux=data * u.count, spectral_axis_index=data.ndim - 1)
+
+
+@dataclass(frozen=True)
+class SourceLayer:
+    pass  # implemented in Task 2
+
+
+@dataclass(frozen=True)
+class ArcLayer:
+    pass  # implemented in Task 3
 
 
 def make_2d_trace_image(
@@ -92,7 +269,7 @@ def make_2d_arc_image(
     nx: int = 3000,
     ny: int = 1000,
     wcs: WCS | None = None,
-    extent: Sequence[int | float] = (3500, 7000),
+    extent=(3500, 7000),
     wave_unit: u.Unit = u.Angstrom,
     wave_air: bool = False,
     background: int | float = 5,
@@ -345,7 +522,7 @@ def make_2d_spec_image(
     nx: int = 3000,
     ny: int = 1000,
     wcs: WCS | None = None,
-    extent: Sequence[int | float] = (6500, 9500),
+    extent=(6500, 9500),
     wave_unit: u.Unit = u.Angstrom,
     wave_air: bool = False,
     background: int | float = 5,
