@@ -92,7 +92,7 @@ class SynthImage:
             .to_ccddata()
         )
 
-    See the :ref:`synth_data` guide for worked examples, including tilted arc
+    See the :ref:`synth_data` guide for more examples, including tilted arc
     lines and modeling a non-linear dispersion relation.
     """
 
@@ -252,7 +252,8 @@ class SynthImage:
 
 @dataclass(frozen=True)
 class SourceLayer:
-    """A continuum source whose spatial profile follows a Chebyshev trace.
+    """
+    A continuum source whose spatial profile follows a Chebyshev trace.
 
     The dispersion axis is the X (column) axis, matching the historical
     ``make_2d_trace_image`` behaviour (the trace ignores any WCS).
@@ -276,7 +277,8 @@ class SourceLayer:
 
 @dataclass(frozen=True)
 class ArcLayer:
-    """Emission lines from one or more pypeit calibration line lists.
+    """
+    Emission lines from one or more pypeit calibration line lists.
 
     Requires a resolvable WCS (supplied on ``SynthImage`` or built from its
     ``extent``). ``tilt_func`` applies a cross-dispersion tilt to simulate
@@ -332,7 +334,8 @@ def make_2d_trace_image(
     profile: Model = None,
     add_noise: bool = True,
 ) -> CCDData:
-    """Deprecated. Use :class:`SynthImage` instead.
+    """
+    Deprecated. Use :class:`SynthImage` instead.
 
     Equivalent to ``SynthImage(nx, ny).add_background(background)
     .add_source(...)`` followed by ``.add_poisson_noise()`` when ``add_noise``,
