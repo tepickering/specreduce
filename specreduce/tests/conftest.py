@@ -5,7 +5,7 @@ from astropy.nddata import StdDevUncertainty
 from astropy.wcs import WCS
 
 from specreduce.tilt_correction import TiltCorrection
-from specreduce.utils.synth_data import make_2d_arc_image
+from specreduce.utils.synth_data import SynthImage
 
 
 # Arc frame creation code taken from Tim Pickering's example notebook
@@ -31,14 +31,17 @@ def mk_arc_frames():
 
     arcs = []
     for ll in (["HeI", "NeI", "XeI"], ["ArI"]):
-        arc = make_2d_arc_image(
-            nx=512,
-            ny=128,
-            linelists=ll,
-            wcs=blue_channel_wcs,
-            line_fwhm=3,
-            tilt_func=tilt_mod,
-            amplitude_scale=1e-2,
+        arc = (
+            SynthImage(nx=512, ny=128, wcs=blue_channel_wcs)
+            .add_background(5)
+            .add_arcs(
+                linelists=ll,
+                line_fwhm=3,
+                tilt_func=tilt_mod,
+                amplitude_scale=1e-2,
+            )
+            .add_poisson_noise()
+            .to_ccddata()
         )
         arc.wcs = None
         arc.uncertainty = StdDevUncertainty(np.full_like(arc.data, 5))
