@@ -78,108 +78,22 @@ class SynthImage:
 
     Examples
     --------
-    This is an example of modeling a spectrograph whose output is curved in the
-    cross-dispersion direction:
+    Build a traced continuum source with background and noise, then render it::
 
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        import numpy as np
         from astropy.modeling import models
-        import astropy.units as u
         from specreduce.utils.synth_data import SynthImage
 
-        model_deg2 = models.Legendre1D(degree=2, c0=50, c1=0, c2=100)
-        im = (
-            SynthImage(nx=3000, ny=1000)
+        image = (
+            SynthImage(nx=1024, ny=400, seed=42)
             .add_background(5)
-            .add_arcs(['HeI', 'ArI', 'ArII'], line_fwhm=3, tilt_func=model_deg2)
+            .add_source(profile=models.Moffat1D(amplitude=20, alpha=0.1))
             .add_poisson_noise()
-            .to_ccddata()
-        )
-        fig = plt.figure(figsize=(10, 6))
-        plt.imshow(im)
-
-    The FITS WCS standard implements ideal world coordinate functions based on the physics
-    of simple dispersers. This is described in detail by Paper III,
-    https://www.aanda.org/articles/aa/pdf/2006/05/aa3818-05.pdf. This can be used to model a
-    non-linear dispersion relation based on the properties of a spectrograph. This example
-    recreates Figure 5 in that paper using a spectrograph with a 450 lines/mm volume phase
-    holographic grism. Standard gratings only use the first three ``PV`` terms:
-
-    .. plot::
-        :include-source:
-
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from astropy.wcs import WCS
-        import astropy.units as u
-        from specreduce.utils.synth_data import SynthImage
-
-        non_linear_header = {
-            'CTYPE1': 'AWAV-GRA',  # Grating dispersion function with air wavelengths
-            'CUNIT1': 'Angstrom',  # Dispersion units
-            'CRPIX1': 719.8,       # Reference pixel [pix]
-            'CRVAL1': 7245.2,      # Reference value [Angstrom]
-            'CDELT1': 2.956,       # Linear dispersion [Angstrom/pix]
-            'PV1_0': 4.5e5,        # Grating density [1/m]
-            'PV1_1': 1,            # Diffraction order
-            'PV1_2': 27.0,         # Incident angle [deg]
-            'PV1_3': 1.765,        # Reference refraction
-            'PV1_4': -1.077e6,     # Refraction derivative [1/m]
-            'CTYPE2': 'PIXEL',     # Spatial detector coordinates
-            'CUNIT2': 'pix',       # Spatial units
-            'CRPIX2': 1,           # Reference pixel
-            'CRVAL2': 0,           # Reference value
-            'CDELT2': 1            # Spatial units per pixel
-        }
-
-        linear_header = {
-            'CTYPE1': 'AWAV',  # Grating dispersion function with air wavelengths
-            'CUNIT1': 'Angstrom',  # Dispersion units
-            'CRPIX1': 719.8,       # Reference pixel [pix]
-            'CRVAL1': 7245.2,      # Reference value [Angstrom]
-            'CDELT1': 2.956,       # Linear dispersion [Angstrom/pix]
-            'CTYPE2': 'PIXEL',     # Spatial detector coordinates
-            'CUNIT2': 'pix',       # Spatial units
-            'CRPIX2': 1,           # Reference pixel
-            'CRVAL2': 0,           # Reference value
-            'CDELT2': 1            # Spatial units per pixel
-        }
-
-        non_linear_wcs = WCS(non_linear_header)
-        linear_wcs = WCS(linear_header)
-
-        # this re-creates Paper III, Figure 5
-        pix_array = 200 + np.arange(1400)
-        nlin = non_linear_wcs.spectral.pixel_to_world(pix_array)
-        lin = linear_wcs.spectral.pixel_to_world(pix_array)
-        resid = (nlin - lin).to(u.Angstrom)
-        plt.plot(pix_array, resid)
-        plt.xlabel("Pixel")
-        plt.ylabel("Correction (Angstrom)")
-        plt.show()
-
-        nlin_im = (
-            SynthImage(nx=600, ny=512, wcs=non_linear_wcs)
-            .add_background(5)
-            .add_arcs(['HeI', 'NeI'], line_fwhm=3, wave_air=True)
-            .add_poisson_noise()
-            .to_ccddata()
-        )
-        lin_im = (
-            SynthImage(nx=600, ny=512, wcs=linear_wcs)
-            .add_background(5)
-            .add_arcs(['HeI', 'NeI'], line_fwhm=3, wave_air=True)
-            .add_poisson_noise()
+            .add_read_noise(3)
             .to_ccddata()
         )
 
-        # subtracting the linear simulation from the non-linear one shows how the
-        # positions of lines diverge between the two cases
-        plt.imshow(nlin_im.data - lin_im.data)
-        plt.show()
+    See the :ref:`synth_data` guide for worked examples, including tilted arc
+    lines and modeling a non-linear dispersion relation.
     """
 
     def __init__(
