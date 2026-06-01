@@ -136,7 +136,7 @@ class SynthImage:
 
     def add_source(
         self,
-        profile: Model | None = None,
+        profile: Model = None,
         trace_center: float | None = None,
         trace_order: int = 3,
         trace_coeffs: dict | None = None,
@@ -153,7 +153,7 @@ class SynthImage:
         line_fwhm: float = 5.0,
         amplitude_scale: float = 1.0,
         wave_air: bool = False,
-        tilt_func: Model | None = None,
+        tilt_func: Model = None,
     ) -> "SynthImage":
         """Add emission lines from one or more pypeit calibration line lists."""
         if tilt_func is None:
@@ -329,7 +329,7 @@ def make_2d_trace_image(
     trace_center: int | float | None = None,
     trace_order: int = 3,
     trace_coeffs: dict | None = None,
-    profile: Model | None = None,
+    profile: Model = None,
     add_noise: bool = True,
 ) -> CCDData:
     """Deprecated. Use :class:`SynthImage` instead.
@@ -367,7 +367,7 @@ def make_2d_arc_image(
     line_fwhm: float = 5.0,
     linelists=("HeI",),
     amplitude_scale: float = 1.0,
-    tilt_func: Model | None = None,
+    tilt_func: Model = None,
     add_noise: bool = True,
 ) -> CCDData:
     """Deprecated. Use :class:`SynthImage` with ``.add_arcs(...)`` instead."""
@@ -401,11 +401,11 @@ def make_2d_spec_image(
     line_fwhm: float = 5.0,
     linelists=("OH_GMOS",),
     amplitude_scale: float = 1.0,
-    tilt_func: Model | None = None,
+    tilt_func: Model = None,
     trace_center: int | float | None = None,
     trace_order: int = 3,
     trace_coeffs: dict | None = None,
-    source_profile: Model | None = None,
+    source_profile: Model = None,
     add_noise: bool = True,
 ) -> CCDData:
     """Deprecated. Use :class:`SynthImage` with ``.add_arcs(...)`` and
