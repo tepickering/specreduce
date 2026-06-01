@@ -73,6 +73,69 @@ def test_add_source_stackable():
     assert two.to_array().sum() > one.to_array().sum()
 
 
+def test_add_source_spectrum_modulates_and_normalizes():
+    nx, ny = 100, 50
+    extent = (3000, 6000)
+    wave = np.linspace(extent[0], extent[1], 400) * u.AA
+    flux = np.exp(-0.5 * ((wave.value - 4500) / 300) ** 2) * u.count
+    spectrum = Spectrum(flux=flux, spectral_axis=wave)
+    img = (
+        SynthImage(nx=nx, ny=ny, extent=extent)
+        .add_source(
+            profile=models.Gaussian1D(amplitude=10, stddev=5),
+            trace_coeffs={"c0": 0, "c1": 0, "c2": 0},
+            spectrum=spectrum,
+        )
+        .to_array()
+    )
+    # peak value equals the profile amplitude (normalized flux peak == 1)
+    assert np.isclose(img.max(), 10.0)
+    # flux varies along the dispersion (X) axis -- not a flat continuum
+    col_sums = img.sum(axis=0)
+    assert not np.allclose(col_sums, col_sums[0])
+    # most flux concentrated near the 4500 A peak
+    waves = _linear_wcs(nx, extent=extent).spectral.pixel_to_world(np.arange(nx)).to(u.AA).value
+    assert col_sums.argmax() == np.abs(waves - 4500).argmin()
+
+
+def test_add_source_spectrum_cropped_to_extent():
+    nx, ny = 120, 40
+    extent = (3000, 6000)
+    wcs = _linear_wcs(nx, extent=extent)
+    waves = wcs.spectral.pixel_to_world(np.arange(nx)).to(u.AA).value
+    wave = np.linspace(4000, 5000, 200) * u.AA
+    flux = np.ones(200) * u.count
+    spectrum = Spectrum(flux=flux, spectral_axis=wave)
+    img = SynthImage(nx=nx, ny=ny, wcs=wcs).add_source(spectrum=spectrum).to_array()
+    # flux outside the spectrum's range is zero
+    assert np.all(img[:, waves < 4000] == 0)
+    assert np.all(img[:, waves > 5000] == 0)
+    # flux present within the spectrum's range
+    assert img[:, (waves > 4400) & (waves < 4600)].sum() > 0
+
+
+def test_add_source_spectrum_builds_wcs_from_extent():
+    extent = (3000, 6000)
+    wave = np.linspace(extent[0], extent[1], 100) * u.AA
+    flux = np.ones(100) * u.count
+    spectrum = Spectrum(flux=flux, spectral_axis=wave)
+    img = SynthImage(nx=80, ny=30, extent=extent).add_source(spectrum=spectrum)
+    arr = img.to_array()
+    assert arr.shape == (30, 80)
+    assert arr.max() > 0
+    # the built WCS is carried through to the rendered CCDData
+    assert img.to_ccddata().wcs is not None
+
+
+def test_add_source_spectrum_requires_wcs_or_extent():
+    wave = np.linspace(3000, 6000, 50) * u.AA
+    flux = np.ones(50) * u.count
+    spectrum = Spectrum(flux=flux, spectral_axis=wave)
+    img = SynthImage(nx=60, ny=20, extent=None).add_source(spectrum=spectrum)
+    with pytest.raises(ValueError, match="Must specify either a wavelength extent or a WCS"):
+        img.to_array()
+
+
 def _linear_wcs(nx, extent=(3000, 6000), wave_unit=u.Angstrom):
     wcs = WCS(naxis=2)
     wcs.wcs.ctype[0] = "WAVE"

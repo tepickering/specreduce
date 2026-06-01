@@ -140,11 +140,35 @@ class SynthImage:
         trace_center: float | None = None,
         trace_order: int = 3,
         trace_coeffs: dict | None = None,
+        spectrum: Spectrum = None,
     ) -> "SynthImage":
-        """Add a continuum source with a Chebyshev-traced spatial profile."""
+        """
+        Add a source with a Chebyshev-traced spatial profile.
+
+        Parameters
+        ----------
+        profile
+            Astropy model describing the cross-dispersion spatial profile of the
+            source. Defaults to ``Moffat1D(amplitude=10, alpha=0.1)``.
+        trace_center
+            Central cross-dispersion position of the trace. Defaults to the
+            middle of the image.
+        trace_order
+            Polynomial order of the Chebyshev trace.
+        trace_coeffs
+            Coefficients of the Chebyshev trace, e.g. ``{"c0": 0, "c1": 50}``.
+        spectrum
+            Optional 1D `~specutils.Spectrum` describing the dispersion-axis flux
+            of the source. Its flux is resampled onto the image wavelength grid
+            (requiring a resolvable WCS) and normalized so its peak within the
+            image extent is one. Wavelengths outside the spectrum's range are set
+            to zero. The normalized flux multiplies the spatial profile column by
+            column, so the source amplitude varies with wavelength. When ``None``
+            (default) the source has a flat continuum.
+        """
         if profile is None:
             profile = models.Moffat1D(amplitude=10, alpha=0.1)
-        layer = SourceLayer(profile, trace_center, trace_order, trace_coeffs)
+        layer = SourceLayer(profile, trace_center, trace_order, trace_coeffs, spectrum)
         return self._clone(_layers=self._layers + (layer,))
 
     def add_arcs(
@@ -180,14 +204,18 @@ class SynthImage:
     add_rdnoise = add_read_noise
 
     def _resolve_wcs(self):
-        has_arc = any(isinstance(layer, ArcLayer) for layer in self._layers)
+        needs_wcs = any(
+            isinstance(layer, ArcLayer)
+            or (isinstance(layer, SourceLayer) and layer.spectrum is not None)
+            for layer in self._layers
+        )
         if self._wcs is not None:
             wcs = self._wcs
             if wcs.spectral.naxis != 1:
                 raise ValueError("Provided WCS must have a spectral axis.")
             if wcs.naxis != 2:
                 raise ValueError("WCS must have NAXIS=2 for a 2D image.")
-        elif has_arc:
+        elif needs_wcs:
             if self._extent is None:
                 raise ValueError("Must specify either a wavelength extent or a WCS.")
             if len(self._extent) != 2:
@@ -253,15 +281,18 @@ class SynthImage:
 @dataclass(frozen=True)
 class SourceLayer:
     """
-    A continuum source whose spatial profile follows a Chebyshev trace.
+    A source whose spatial profile follows a Chebyshev trace.
 
     The dispersion axis is the X (column) axis, matching the historical
-    ``make_2d_trace_image`` behaviour (the trace ignores any WCS).
+    ``make_2d_trace_image`` behaviour (the trace ignores any WCS). When a
+    ``spectrum`` is supplied, its normalized flux modulates the profile along
+    the dispersion axis; otherwise the source has a flat continuum.
     """
     profile: Model
     trace_center: float | None = None
     trace_order: int = 3
     trace_coeffs: dict | None = None
+    spectrum: Spectrum | None = None
 
     def render(self, ctx: _RenderContext) -> np.ndarray:
         trace_center = ctx.ny / 2 if self.trace_center is None else self.trace_center
@@ -272,7 +303,38 @@ class SourceLayer:
         )
         trace_mod = models.Chebyshev1D(degree=self.trace_order, **trace_coeffs)
         trace = ctx.yy - trace_center + trace_mod(ctx.xx / ctx.nx)
-        return self.profile(trace)
+        image = self.profile(trace)
+        if self.spectrum is not None:
+            image = image * self._normalized_flux(ctx)[np.newaxis, :]
+        return image
+
+    def _normalized_flux(self, ctx: _RenderContext) -> np.ndarray:
+        """
+        Resample the source spectrum onto the image's dispersion-axis wavelengths.
+
+        Returns a 1D array of length ``ctx.nx``: the spectrum's flux interpolated
+        onto the image wavelength grid, zero outside the spectrum's range, and
+        normalized so its peak within the image extent is one.
+        """
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="No observer defined on WCS.*")
+            image_waves = ctx.wcs.spectral.pixel_to_world(np.arange(ctx.nx))
+        spec_waves = self.spectrum.spectral_axis.to(
+            image_waves.unit, equivalencies=u.spectral()
+        )
+        flux = np.asarray(self.spectrum.flux.value, dtype=float)
+        order = np.argsort(spec_waves.value)
+        resampled = np.interp(
+            image_waves.value,
+            spec_waves.value[order],
+            flux[order],
+            left=0.0,
+            right=0.0,
+        )
+        peak = resampled.max()
+        if peak > 0:
+            resampled = resampled / peak
+        return resampled
 
 
 @dataclass(frozen=True)

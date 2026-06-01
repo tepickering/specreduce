@@ -23,8 +23,11 @@ never modified and a base configuration can be branched safely::
 Signal layers are additive and stackable:
 
 - :meth:`~specreduce.utils.synth_data.SynthImage.add_background` adds a constant level.
-- :meth:`~specreduce.utils.synth_data.SynthImage.add_source` adds a continuum source whose spatial
-  profile follows a Chebyshev trace (call it more than once for multiple sources).
+- :meth:`~specreduce.utils.synth_data.SynthImage.add_source` adds a source whose spatial
+  profile follows a Chebyshev trace (call it more than once for multiple sources). By default the
+  source is a flat continuum, but passing a 1D `~specutils.Spectrum` modulates the flux along the
+  dispersion axis: the spectrum is resampled onto the image wavelength grid, normalized to a peak of
+  one, and zeroed outside its wavelength range.
 - :meth:`~specreduce.utils.synth_data.SynthImage.add_arcs` adds emission lines from one or more
   ``pypeit`` calibration line lists, with an optional cross-dispersion tilt.
 - :meth:`~specreduce.utils.synth_data.SynthImage.add_skylines` is a convenience wrapper around
