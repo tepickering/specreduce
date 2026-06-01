@@ -114,6 +114,22 @@ def test_add_source_spectrum_cropped_to_extent():
     assert img[:, (waves > 4400) & (waves < 4600)].sum() > 0
 
 
+def test_add_source_spectrum_outside_extent_is_zero():
+    nx, ny = 80, 30
+    extent = (3000, 6000)
+    # spectrum lies entirely outside the image's wavelength range -> no overlap
+    wave = np.linspace(8000, 9000, 100) * u.AA
+    flux = np.ones(100) * u.count
+    spectrum = Spectrum(flux=flux, spectral_axis=wave)
+    img = (
+        SynthImage(nx=nx, ny=ny, extent=extent)
+        .add_source(profile=models.Gaussian1D(amplitude=10, stddev=5), spectrum=spectrum)
+        .to_array()
+    )
+    # nothing overlaps, so the normalized flux (and the source) is all zero
+    assert np.all(img == 0)
+
+
 def test_add_source_spectrum_builds_wcs_from_extent():
     extent = (3000, 6000)
     wave = np.linspace(extent[0], extent[1], 100) * u.AA
