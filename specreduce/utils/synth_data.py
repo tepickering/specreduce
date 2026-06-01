@@ -145,6 +145,10 @@ class SynthImage:
         )
         return self._clone(_layers=self._layers + (layer,))
 
+    def add_skylines(self, linelists="OH_GMOS", **kwargs) -> "SynthImage":
+        """Add night-sky airglow emission lines (OH lists), wrapping ``add_arcs``."""
+        return self.add_arcs(linelists, **kwargs)
+
     def _resolve_wcs(self):
         has_arc = any(isinstance(layer, ArcLayer) for layer in self._layers)
         if self._wcs is not None:

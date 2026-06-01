@@ -153,3 +153,12 @@ def test_arcs_stackable():
     one = SynthImage(nx=300, ny=100, wcs=wcs).add_arcs(["HeI"])
     two = one.add_arcs(["NeI"])
     assert two.to_array().sum() > one.to_array().sum()
+
+
+@pytest.mark.remote_data
+@pytest.mark.filterwarnings("ignore:No observer defined on WCS")
+def test_add_skylines_matches_add_arcs():
+    wcs = _linear_wcs(300, extent=(6500, 9500))
+    sky = SynthImage(nx=300, ny=100, wcs=wcs, seed=1).add_skylines("OH_GMOS")
+    arc = SynthImage(nx=300, ny=100, wcs=wcs, seed=1).add_arcs("OH_GMOS")
+    assert np.array_equal(sky.to_array(), arc.to_array())
