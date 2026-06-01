@@ -21,7 +21,7 @@ def make_2d_spec_image(
     wave_air: bool = False,
     background: int | float = 5,
     line_fwhm: float = 5.0,
-    linelists: list[str] = ("OH_GMOS"),
+    linelists: list[str] = ("OH_GMOS",),
     airglow_amplitude: float = 1.0,
     spectrum_amplitude: float = 1.0,
     tilt_func: Model = models.Legendre1D(degree=0),

@@ -257,8 +257,16 @@ def test_make_2d_arc_image_deprecated_and_matches():
 
 @pytest.mark.remote_data
 @pytest.mark.filterwarnings("ignore:No observer defined on WCS")
-def test_make_2d_spec_image_deprecated():
+def test_make_2d_spec_image_deprecated_and_matches():
     with pytest.warns(AstropyDeprecationWarning):
         ccd = make_2d_spec_image(nx=300, ny=100, add_noise=False)
+    expected = (
+        SynthImage(nx=300, ny=100, extent=(6500, 9500))
+        .add_background(5)
+        .add_arcs(("OH_GMOS",))
+        .add_source(profile=models.Moffat1D(amplitude=10, alpha=0.1))
+        .to_array()
+    )
     assert isinstance(ccd, CCDData)
     assert ccd.data.shape == (100, 300)
+    assert np.array_equal(ccd.data, expected)
