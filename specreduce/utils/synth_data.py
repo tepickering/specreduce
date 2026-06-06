@@ -296,11 +296,16 @@ class SourceLayer:
 
     def render(self, ctx: _RenderContext) -> np.ndarray:
         trace_center = ctx.ny / 2 if self.trace_center is None else self.trace_center
-        trace_coeffs = (
-            {"c0": 0, "c1": 50, "c2": 100}
-            if self.trace_coeffs is None
-            else self.trace_coeffs
-        )
+        if self.trace_coeffs is None:
+            # Default to a curved trace, but only keep coefficients that fit
+            # within the requested order so that trace_order < 2 still works.
+            trace_coeffs = {
+                f"c{i}": c
+                for i, c in enumerate((0, 50, 100))
+                if i <= self.trace_order
+            }
+        else:
+            trace_coeffs = self.trace_coeffs
         trace_mod = models.Chebyshev1D(degree=self.trace_order, **trace_coeffs)
         trace = ctx.yy - trace_center + trace_mod(ctx.xx / ctx.nx)
         image = self.profile(trace)

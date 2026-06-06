@@ -65,6 +65,15 @@ def test_add_source_default_profile():
     assert arr.max() > 0
 
 
+@pytest.mark.parametrize("trace_order", [0, 1, 2, 3])
+def test_add_source_default_coeffs_low_trace_order(trace_order):
+    # The default trace_coeffs must adapt to trace_order; orders < 2 previously
+    # raised because the hard-coded defaults included c1/c2. See PR #311.
+    arr = SynthImage(nx=100, ny=50).add_source(trace_order=trace_order).to_array()
+    assert arr.shape == (50, 100)
+    assert arr.max() > 0
+
+
 def test_add_source_stackable():
     one = SynthImage(nx=200, ny=100).add_source(
         profile=models.Gaussian1D(amplitude=100, stddev=10)
