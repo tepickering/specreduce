@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see ../../licenses/LICENSE.rst
 import warnings
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 from astropy import units as u
@@ -9,6 +10,7 @@ from astropy.nddata import CCDData
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.utils.decorators import deprecated
 from astropy.wcs import WCS
+from numpy.typing import NDArray
 
 from specutils import Spectrum
 
@@ -34,8 +36,8 @@ class _RenderContext:
     """Shared geometry passed to every layer's ``render`` method."""
     nx: int
     ny: int
-    xx: np.ndarray
-    yy: np.ndarray
+    xx: NDArray[np.float64]
+    yy: NDArray[np.float64]
     wcs: WCS | None
     disp_axis: int
 
@@ -45,7 +47,7 @@ class BackgroundLayer:
     """A constant additive background level in counts."""
     level: float
 
-    def render(self, ctx: _RenderContext) -> np.ndarray:
+    def render(self, ctx: _RenderContext) -> NDArray[np.float64]:
         return np.full((ctx.ny, ctx.nx), float(self.level))
 
 
@@ -136,11 +138,11 @@ class SynthImage:
 
     def add_source(
         self,
-        profile: Model = None,
+        profile: Optional[Model] = None,
         trace_center: float | None = None,
         trace_order: int = 3,
         trace_coeffs: dict | None = None,
-        spectrum: Spectrum = None,
+        spectrum: Spectrum | None = None,
     ) -> "SynthImage":
         """
         Add a source with a Chebyshev-traced spatial profile.
@@ -177,7 +179,7 @@ class SynthImage:
         line_fwhm: float = 5.0,
         amplitude_scale: float = 1.0,
         wave_air: bool = False,
-        tilt_func: Model = None,
+        tilt_func: Optional[Model] = None,
     ) -> "SynthImage":
         """Add emission lines from one or more pypeit calibration line lists."""
         if tilt_func is None:
@@ -261,7 +263,7 @@ class SynthImage:
 
         return signal, wcs
 
-    def to_array(self) -> np.ndarray:
+    def to_array(self) -> NDArray[np.float64]:
         """Render and return the image as a plain ``numpy.ndarray`` (counts)."""
         return self._render()[0]
 
@@ -294,7 +296,7 @@ class SourceLayer:
     trace_coeffs: dict | None = None
     spectrum: Spectrum | None = None
 
-    def render(self, ctx: _RenderContext) -> np.ndarray:
+    def render(self, ctx: _RenderContext) -> NDArray[np.float64]:
         trace_center = ctx.ny / 2 if self.trace_center is None else self.trace_center
         if self.trace_coeffs is None:
             default_coeffs = (0, 50, 100)
@@ -312,7 +314,7 @@ class SourceLayer:
             image = image * self._normalized_flux(ctx)[np.newaxis, :]
         return image
 
-    def _normalized_flux(self, ctx: _RenderContext) -> np.ndarray:
+    def _normalized_flux(self, ctx: _RenderContext) -> NDArray[np.float64]:
         """
         Resample the source spectrum onto the image's dispersion-axis wavelengths.
 
@@ -356,7 +358,7 @@ class ArcLayer:
     wave_air: bool = False
     tilt_func: Model = field(default_factory=lambda: models.Legendre1D(degree=0))
 
-    def render(self, ctx: _RenderContext) -> np.ndarray:
+    def render(self, ctx: _RenderContext) -> NDArray[np.float64]:
         xx, yy = ctx.xx, ctx.yy
         if self.tilt_func is not None:
             if not isinstance(self.tilt_func, _ALLOWED_TILT):
@@ -397,7 +399,7 @@ def make_2d_trace_image(
     trace_center: int | float | None = None,
     trace_order: int = 3,
     trace_coeffs: dict | None = None,
-    profile: Model = None,
+    profile: Optional[Model] = None,
     add_noise: bool = True,
 ) -> CCDData:
     """
@@ -436,7 +438,7 @@ def make_2d_arc_image(
     line_fwhm: float = 5.0,
     linelists=("HeI",),
     amplitude_scale: float = 1.0,
-    tilt_func: Model = None,
+    tilt_func: Optional[Model] = None,
     add_noise: bool = True,
 ) -> CCDData:
     """Deprecated. Use :class:`SynthImage` with ``.add_arcs(...)`` instead."""
@@ -470,11 +472,11 @@ def make_2d_spec_image(
     line_fwhm: float = 5.0,
     linelists=("OH_GMOS",),
     amplitude_scale: float = 1.0,
-    tilt_func: Model = None,
+    tilt_func: Optional[Model] = None,
     trace_center: int | float | None = None,
     trace_order: int = 3,
     trace_coeffs: dict | None = None,
-    source_profile: Model = None,
+    source_profile: Optional[Model] = None,
     add_noise: bool = True,
 ) -> CCDData:
     """Deprecated. Use :class:`SynthImage` with ``.add_arcs(...)`` and
