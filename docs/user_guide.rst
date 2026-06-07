@@ -19,3 +19,4 @@ User Guide
     extinction
     specphot_standards
     mask_treatment/mask_treatment
+    synth_data

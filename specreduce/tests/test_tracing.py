@@ -3,10 +3,16 @@ import pytest
 from astropy.modeling import fitting, models
 from astropy.nddata import NDData
 import astropy.units as u
-from specreduce.utils.synth_data import make_2d_trace_image
+from specreduce.utils.synth_data import SynthImage
 from specreduce.tracing import Trace, FlatTrace, ArrayTrace, FitTrace
 
-IM = make_2d_trace_image()
+IM = (
+    SynthImage(nx=3000, ny=1000)
+    .add_background(5)
+    .add_source(profile=models.Moffat1D(amplitude=10, alpha=0.1))
+    .add_poisson_noise()
+    .to_ccddata()
+)
 
 
 def mk_img(nrows=200, ncols=160, nan_slices=None, add_noise=True):

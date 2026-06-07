@@ -52,7 +52,7 @@ The reduction workflow follows a modular pipeline: **Trace → Background → Ex
 
 ### Core Modules
 
-- **core.py**: Base class `SpecreduceOperation` and `_ImageParser` for image format coercion. Handles Spectrum1D, CCDData, NDData, Quantity, and ndarray inputs. Defines `MaskingOption` enum and masking strategies.
+- **core.py**: Base class `SpecreduceOperation` and the `parse_image()` function for image format coercion (replaced the former `_ImageParser` class in v1.9). Handles Spectrum (specutils v2), CCDData, NDData, Quantity, and ndarray inputs. `MaskingOption` is a `typing.Literal` of the seven supported masking strategies.
 
 - **tracing.py**: Trace determination classes
   - `Trace`: Base trace (center of image)
@@ -68,27 +68,35 @@ The reduction workflow follows a modular pipeline: **Trace → Background → Ex
 
 - **wavecal1d.py**: Current wavelength calibration implementation using `WavelengthCalibration1D`. Supports automated line matching, template matching, and produces GWCS-based WCS objects.
 
+- **wavesol1d.py**: `WavelengthSolution1D` — manages the pixel↔wavelength polynomial mapping underlying the calibration.
+
+- **line_matching.py**: Helpers for matching detected lines to reference line lists.
+
+- **tilt_correction.py**: `TiltCorrection` for correcting 2D spectral tilt/curvature.
+
+- **tilt_solution.py**: `TiltSolution` encapsulating the polynomial tilt transformation.
+
+- **table_utils.py**: Shared helpers for the QTable structures used across modules.
+
 - **wavelength_calibration.py**: Legacy wavelength calibration (deprecated in v1.7.0, removal in v2.0)
 
 - **fluxcal.py**: `FluxCalibration` class for flux calibration with magnitude-to-flux conversion and airmass extinction correction
 
 - **calibration_data.py**: Spectrophotometric standards and line lists
 
-- **utils/synth_data.py**: Synthetic spectroscopic data generation for testing
-
-- **compat.py**: Compatibility layer for specutils v1.x and v2.x
+- **utils/synth_data.py**: Synthetic spectroscopic data generation for testing. `SynthImage` is an immutable, chainable builder (`add_background`/`add_source`/`add_arcs`/`add_skylines`/`add_poisson_noise`/`add_read_noise`, then `to_array`/`to_ccddata`/`to_spectrum`). The old `make_2d_trace_image`/`make_2d_arc_image`/`make_2d_spec_image` functions are deprecated shims around it.
 
 ### Key Design Patterns
 
-1. **Image Format Flexibility**: All operations accept multiple input formats via `_ImageParser`
-2. **Masking Strategies**: Seven masking options defined in `MaskingOption` enum
+1. **Image Format Flexibility**: All operations accept multiple input formats via `parse_image()`
+2. **Masking Strategies**: Seven masking options in the `MaskingOption` Literal (`apply`, `ignore`, `propagate`, `zero_fill`, `nan_fill`, `apply_mask_only`, `apply_nan_only`)
 3. **Astropy Integration**: Uses Astropy models, units, and conventions throughout
 4. **GWCS Support**: Wavelength calibration produces proper WCS objects
 
 ## Dependencies
 
 - Python ≥3.11
-- Core: numpy≥1.24, astropy≥5.3, scipy≥1.10, specutils≥1.9.1, matplotlib≥3.10, gwcs
+- Core: numpy≥1.24, astropy≥6.0, scipy≥1.14, specutils≥2.0, matplotlib≥3.10, gwcs
 - Optional: photutils≥1.0 (stellar profile fitting), synphot (synthetic photometry)
 
 ## Code Style

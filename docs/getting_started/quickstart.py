@@ -9,7 +9,7 @@ from astropy.nddata import StdDevUncertainty, CCDData, VarianceUncertainty
 import astropy.units as u
 from photutils.datasets import apply_poisson_noise
 
-from specreduce.utils.synth_data import make_2d_arc_image, make_2d_trace_image
+from specreduce.utils.synth_data import SynthImage
 
 
 def make_2d_spec_image(
@@ -21,7 +21,7 @@ def make_2d_spec_image(
     wave_air: bool = False,
     background: int | float = 5,
     line_fwhm: float = 5.0,
-    linelists: list[str] = ("OH_GMOS"),
+    linelists: list[str] = ("OH_GMOS",),
     airglow_amplitude: float = 1.0,
     spectrum_amplitude: float = 1.0,
     tilt_func: Model = models.Legendre1D(degree=0),
@@ -96,29 +96,26 @@ def make_2d_spec_image(
     if trace_coeffs is None:
         trace_coeffs = {"c0": 0, "c1": 50, "c2": 100}
 
-    arc_image = make_2d_arc_image(
-        nx=nx,
-        ny=ny,
-        wcs=wcs,
-        extent=extent,
-        wave_unit=wave_unit,
-        wave_air=wave_air,
-        background=0,
-        line_fwhm=line_fwhm,
-        linelists=linelists,
-        tilt_func=tilt_func,
-        add_noise=False,
+    arc_image = (
+        SynthImage(nx=nx, ny=ny, wcs=wcs, extent=extent, wave_unit=wave_unit)
+        .add_arcs(
+            linelists=linelists,
+            line_fwhm=line_fwhm,
+            wave_air=wave_air,
+            tilt_func=tilt_func,
+        )
+        .to_ccddata()
     )
 
-    trace_image = make_2d_trace_image(
-        nx=nx,
-        ny=ny,
-        background=0,
-        trace_center=trace_center,
-        trace_order=trace_order,
-        trace_coeffs=trace_coeffs,
-        profile=source_profile,
-        add_noise=False,
+    trace_image = (
+        SynthImage(nx=nx, ny=ny)
+        .add_source(
+            profile=source_profile,
+            trace_center=trace_center,
+            trace_order=trace_order,
+            trace_coeffs=trace_coeffs,
+        )
+        .to_ccddata()
     )
 
     wl = wcs.spectral.pixel_to_world(np.arange(nx)).to(u.nm).value
@@ -176,11 +173,14 @@ def make_science_and_arcs(ndisp: int = 1000, ncross: int = 300):
         source_profile=models.Moffat1D(amplitude=1, alpha=0.3),
     )
 
-    arcargs = dict(wcs=wcs, line_fwhm=3, background=0, add_noise=False)
     arcs = []
     for linelist in ["HeI", "NeI"]:
-        arc = make_2d_arc_image(ndisp, ncross, linelists=[linelist], **arcargs)
-        arc.data = apply_poisson_noise(200*(arc.data / arc.data.max()) + 10) - 10
+        arc = (
+            SynthImage(nx=ndisp, ny=ncross, wcs=wcs)
+            .add_arcs(linelists=[linelist], line_fwhm=3)
+            .to_ccddata()
+        )
+        arc.data = apply_poisson_noise(200 * (arc.data / arc.data.max()) + 10) - 10
         arcs.append(arc)
     return science, arcs
 

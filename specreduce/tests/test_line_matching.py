@@ -12,7 +12,7 @@ from specutils import Spectrum
 from specreduce.extract import BoxcarExtract
 from specreduce.line_matching import match_lines_wcs, find_arc_lines
 from specreduce.tracing import FlatTrace
-from specreduce.utils.synth_data import make_2d_arc_image
+from specreduce.utils.synth_data import SynthImage
 
 
 @pytest.fixture
@@ -53,14 +53,17 @@ def mk_test_data():
     linear_wcs = WCS(header=linear_header)
 
     tilt_mod = models.Legendre1D(degree=2, c0=50, c1=0, c2=100)
-    match_im = make_2d_arc_image(
-        nx=1400,
-        ny=1024,
-        linelists=['HeI', 'NeI'],
-        wcs=linear_wcs,
-        line_fwhm=5,
-        tilt_func=tilt_mod,
-        amplitude_scale=5e-4
+    match_im = (
+        SynthImage(nx=1400, ny=1024, wcs=linear_wcs)
+        .add_background(5)
+        .add_arcs(
+            linelists=['HeI', 'NeI'],
+            line_fwhm=5,
+            tilt_func=tilt_mod,
+            amplitude_scale=5e-4,
+        )
+        .add_poisson_noise()
+        .to_ccddata()
     )
 
     arclist = load_pypeit_calibration_lines(['HeI', 'NeI'])['wavelength']
